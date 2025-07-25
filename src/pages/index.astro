@@ -199,14 +199,57 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 			// Global state for fill levels
 			let containerFillLevels = {};
 
-			// Function to load flavors from URL parameters
+			// Function to load flavors and fill levels from compact URL format
 			function loadFlavorsFromURL() {
 				try {
 					const urlParams = new URLSearchParams(window.location.search);
-					const sharedFlavors = urlParams.get('flavors');
 					
-					if (sharedFlavors) {
-						const flavors = JSON.parse(decodeURIComponent(sharedFlavors));
+					// Try new compact format first (?d=A:Vanilla:F|B:Chocolate:H)
+					const compactData = urlParams.get('d');
+					if (compactData) {
+						const decoded = decodeURIComponent(compactData);
+						const items = decoded.split('|');
+						const loadedFlavors = {};
+						
+						items.forEach(item => {
+							const [containerId, flavor, fillCode] = item.split(':');
+							if (containerId && flavor) {
+								const input = document.getElementById(`flavor-${containerId}`);
+								if (input) {
+									input.value = flavor;
+									loadedFlavors[containerId] = flavor;
+									// Add animation for shared flavors
+									input.classList.add('animate-pulse');
+									setTimeout(() => input.classList.remove('animate-pulse'), 500);
+									
+									// Set fill level from code: F=Full, H=Half
+									const fillLevel = fillCode === 'H' ? FILL_LEVELS.HALF : FILL_LEVELS.FULL;
+									containerFillLevels[containerId] = fillLevel;
+									console.log(`📥 Loaded ${containerId}: "${flavor}" at ${fillLevel}%`);
+								}
+							}
+						});
+						
+						// Save to localStorage
+						if (Object.keys(loadedFlavors).length > 0) {
+							localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedFlavors));
+							saveFillLevels();
+						}
+						
+						// Remove URL parameters for cleaner URL
+						window.history.replaceState({}, document.title, window.location.pathname);
+						
+						// Update visual states for loaded flavors
+						setTimeout(() => updateContainerVisuals(), 100);
+						
+						console.log('✅ Shared flavors and fill levels loaded from compact URL');
+						return true;
+					}
+					
+					// Fallback: Try legacy format for backwards compatibility (?flavors={...})
+					const legacyFlavors = urlParams.get('flavors');
+					if (legacyFlavors) {
+						const flavors = JSON.parse(decodeURIComponent(legacyFlavors));
 						
 						// Load shared flavors into inputs
 						Object.keys(flavors).forEach(containerId => {
@@ -216,30 +259,27 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 								// Add animation for shared flavors
 								input.classList.add('animate-pulse');
 								setTimeout(() => input.classList.remove('animate-pulse'), 500);
-							}
-						});
-						
-						// Save shared flavors to localStorage
-						localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
-						
-						// Remove URL parameters for cleaner URL
-						window.history.replaceState({}, document.title, window.location.pathname);
-						
-						// Initialize fill levels for URL loaded flavors
-						containers.forEach(containerId => {
-							if (!containerFillLevels[containerId]) {
+								// Default to FULL for legacy URLs
 								containerFillLevels[containerId] = FILL_LEVELS.FULL;
 							}
 						});
 						
+						// Save to localStorage
+						localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+						saveFillLevels();
+						
+						// Remove URL parameters for cleaner URL
+						window.history.replaceState({}, document.title, window.location.pathname);
+						
 						// Update visual states for loaded flavors
 						setTimeout(() => updateContainerVisuals(), 100);
 						
-						console.log('✅ Shared flavors loaded from URL');
+						console.log('✅ Legacy shared flavors loaded from URL (defaulting to FULL fill levels)');
 						return true;
 					}
+					
 				} catch (error) {
-					console.error('❌ Error loading shared flavors:', error);
+					console.error('❌ Error loading flavors from URL:', error);
 				}
 				return false;
 			}
@@ -388,25 +428,31 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 			// Debounced save function (saves 300ms after user stops typing - faster feedback)
 			const debouncedSave = debounce(saveFlavors, 300);
 
-			// Function to generate shareable URL with current flavors
+			// Function to generate compact shareable URL with flavors and fill levels
 			function generateShareURL() {
 				try {
-					const flavors = {};
 					const inputs = document.querySelectorAll('.flavor-input');
+					const compactData = [];
 					let hasContent = false;
 					
 					inputs.forEach(input => {
 						const containerId = input.dataset.container;
 						const value = input.value.trim();
 						if (containerId && value) {
-							flavors[containerId] = value;
+							const fillLevel = containerFillLevels[containerId] || FILL_LEVELS.FULL;
+							// Compact format: containerId:flavor:fillLevel
+							// Use single character for fill levels: F=Full(80), H=Half(35)
+							const fillCode = fillLevel === FILL_LEVELS.FULL ? 'F' : 'H';
+							compactData.push(`${containerId}:${value}:${fillCode}`);
 							hasContent = true;
 						}
 					});
 					
 					if (hasContent) {
-						const flavorsParam = encodeURIComponent(JSON.stringify(flavors));
-						const shareURL = `${window.location.origin}${window.location.pathname}?flavors=${flavorsParam}`;
+						// Join with pipe separator for readability
+						const compactParam = encodeURIComponent(compactData.join('|'));
+						const shareURL = `${window.location.origin}${window.location.pathname}?d=${compactParam}`;
+						console.log(`📤 Generated compact share URL: ${shareURL}`);
 						return shareURL;
 					}
 					return null;
