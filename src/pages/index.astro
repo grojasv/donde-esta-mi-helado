@@ -161,8 +161,9 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 
 		<!-- Enhanced client-side JavaScript with improved UX -->
 		<script>
-			// Storage key for localStorage
+			// Storage keys for localStorage
 			const STORAGE_KEY = 'donde-esta-mi-helado-flavors';
+			const FILL_LEVELS_KEY = 'donde-esta-mi-helado-fill-levels';
 
 			// Creamy ice cream colors for realistic variety
 			const ICE_CREAM_COLORS = [
@@ -187,6 +188,16 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 			function getRandomIceCreamColor() {
 				return ICE_CREAM_COLORS[Math.floor(Math.random() * ICE_CREAM_COLORS.length)];
 			}
+
+			// Fill level states
+			const FILL_LEVELS = {
+				EMPTY: 0,
+				HALF: 35,
+				FULL: 80
+			};
+
+			// Global state for fill levels
+			let containerFillLevels = {};
 
 			// Function to load flavors from URL parameters
 			function loadFlavorsFromURL() {
@@ -213,6 +224,13 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						
 						// Remove URL parameters for cleaner URL
 						window.history.replaceState({}, document.title, window.location.pathname);
+						
+						// Initialize fill levels for URL loaded flavors
+						containers.forEach(containerId => {
+							if (!containerFillLevels[containerId]) {
+								containerFillLevels[containerId] = FILL_LEVELS.FULL;
+							}
+						});
 						
 						// Update visual states for loaded flavors
 						setTimeout(() => updateContainerVisuals(), 100);
@@ -249,6 +267,9 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 							}
 						});
 						
+						// Load fill levels
+						loadFillLevels();
+						
 						// Update visual states for loaded flavors
 						setTimeout(() => updateContainerVisuals(), 100);
 						
@@ -258,6 +279,29 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					console.error('❌ Error loading flavors:', error);
 					// Clear corrupted data
 					localStorage.removeItem(STORAGE_KEY);
+				}
+			}
+
+			// Function to save fill levels to localStorage
+			function saveFillLevels() {
+				try {
+					localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(containerFillLevels));
+				} catch (error) {
+					console.error('❌ Error saving fill levels:', error);
+				}
+			}
+
+			// Function to load fill levels from localStorage
+			function loadFillLevels() {
+				try {
+					const saved = localStorage.getItem(FILL_LEVELS_KEY);
+					if (saved) {
+						containerFillLevels = JSON.parse(saved);
+						console.log('✅ Fill levels loaded from localStorage');
+					}
+				} catch (error) {
+					console.error('❌ Error loading fill levels:', error);
+					containerFillLevels = {};
 				}
 			}
 
@@ -443,12 +487,18 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 							// Apply random creamy color if not already set
 							if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false') {
 								const randomColor = getRandomIceCreamColor();
-								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl`;
+								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl cursor-pointer`;
 								iceCreamFill.dataset.colorSet = 'true';
 								console.log(`🎨 Applied color to ${containerId}:`, randomColor);
 							}
-							iceCreamFill.style.height = '85%';
+							
+							// Get current fill level (default to FULL for new flavors)
+							const fillLevel = containerFillLevels[containerId] || FILL_LEVELS.FULL;
+							iceCreamFill.style.height = `${fillLevel}%`;
 							iceCreamFill.style.opacity = '0.8';
+							
+							// Add click handler for toggling fill levels
+							iceCreamFill.onclick = () => toggleFillLevel(containerId);
 						}
 						if (emptyIndicator) {
 							emptyIndicator.style.opacity = '0';
@@ -458,14 +508,38 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						if (iceCreamFill) {
 							iceCreamFill.style.height = '0%';
 							iceCreamFill.style.opacity = '0';
-							// Reset color for next flavor
+							iceCreamFill.onclick = null; // Remove click handler
+							// Reset color and fill level for next flavor
 							iceCreamFill.dataset.colorSet = 'false';
+							containerFillLevels[containerId] = FILL_LEVELS.EMPTY;
 						}
 						if (emptyIndicator) {
 							emptyIndicator.style.opacity = '1';
 						}
 					}
 				});
+			}
+
+			// Function to toggle fill level between FULL and HALF
+			function toggleFillLevel(containerId) {
+				const input = document.querySelector(`[data-container="${containerId}"]`);
+				if (!input || !input.value.trim()) return; // Only work with containers that have flavors
+				
+				// Toggle between FULL and HALF
+				const currentLevel = containerFillLevels[containerId] || FILL_LEVELS.FULL;
+				const newLevel = currentLevel === FILL_LEVELS.FULL ? FILL_LEVELS.HALF : FILL_LEVELS.FULL;
+				containerFillLevels[containerId] = newLevel;
+				
+				// Update visual immediately
+				const container = input.closest('.group');
+				const iceCreamFill = container.querySelector('.ice-cream-fill');
+				if (iceCreamFill) {
+					iceCreamFill.style.height = `${newLevel}%`;
+					console.log(`🥃 Toggled ${containerId} fill level to ${newLevel}%`);
+				}
+				
+				// Save state
+				saveFillLevels();
 			}
 
 			// Function to update eat button states
@@ -517,10 +591,10 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						// Ensure ice cream has a random color before draining animation
 						if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false') {
 							const randomColor = getRandomIceCreamColor();
-							iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} opacity-0 transition-all duration-500 rounded-b-xl`;
+							iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl cursor-pointer`;
 							iceCreamFill.dataset.colorSet = 'true';
 						}
-						// Animate ice cream "draining" as it's being eaten
+						// Animate ice cream "draining" as it's being eaten (works from any fill level)
 						iceCreamFill.style.height = '20%';
 						iceCreamFill.style.opacity = '0.4';
 						iceCreamFill.style.transition = 'all 0.8s ease-in';
@@ -553,6 +627,12 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					
 					// Phase 5: Clear the flavor and show "Yum!" feedback
 					input.value = '';
+					containerFillLevels[containerId] = FILL_LEVELS.EMPTY; // Reset fill level
+					if (iceCreamFill) {
+						iceCreamFill.onclick = null; // Remove click handler
+						// Reset color for next flavor
+						iceCreamFill.dataset.colorSet = 'false';
+					}
 					eatBtn.innerHTML = '😋';
 					
 					// Phase 6: Show success message
@@ -583,6 +663,7 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					
 					// Save the updated state
 					saveFlavors();
+					saveFillLevels(); // Save updated fill levels
 					updateShareButton();
 					updateEatButtons();
 					
@@ -627,6 +708,7 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					// Save immediately on blur (when user leaves the field)  
 					input.addEventListener('blur', () => {
 						saveFlavors();
+						saveFillLevels(); // Also save fill levels
 						updateShareButton();
 						updateEatButtons();
 						updateContainerVisuals(); // Ensure visual state is correct
