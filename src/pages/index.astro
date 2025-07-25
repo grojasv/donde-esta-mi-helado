@@ -203,9 +203,8 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 			function loadFlavorsFromURL() {
 				try {
 					const urlParams = new URLSearchParams(window.location.search);
-					
-					// Try new compact format first (?d=A:Vanilla:F|B:Chocolate:H)
 					const compactData = urlParams.get('d');
+					
 					if (compactData) {
 						const decoded = decodeURIComponent(compactData);
 						const items = decoded.split('|');
@@ -243,38 +242,6 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						setTimeout(() => updateContainerVisuals(), 100);
 						
 						console.log('✅ Shared flavors and fill levels loaded from compact URL');
-						return true;
-					}
-					
-					// Fallback: Try legacy format for backwards compatibility (?flavors={...})
-					const legacyFlavors = urlParams.get('flavors');
-					if (legacyFlavors) {
-						const flavors = JSON.parse(decodeURIComponent(legacyFlavors));
-						
-						// Load shared flavors into inputs
-						Object.keys(flavors).forEach(containerId => {
-							const input = document.getElementById(`flavor-${containerId}`);
-							if (input && flavors[containerId]) {
-								input.value = flavors[containerId];
-								// Add animation for shared flavors
-								input.classList.add('animate-pulse');
-								setTimeout(() => input.classList.remove('animate-pulse'), 500);
-								// Default to FULL for legacy URLs
-								containerFillLevels[containerId] = FILL_LEVELS.FULL;
-							}
-						});
-						
-						// Save to localStorage
-						localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
-						saveFillLevels();
-						
-						// Remove URL parameters for cleaner URL
-						window.history.replaceState({}, document.title, window.location.pathname);
-						
-						// Update visual states for loaded flavors
-						setTimeout(() => updateContainerVisuals(), 100);
-						
-						console.log('✅ Legacy shared flavors loaded from URL (defaulting to FULL fill levels)');
 						return true;
 					}
 					
