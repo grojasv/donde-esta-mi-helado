@@ -493,12 +493,22 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 							}
 							
 							// Get current fill level (default to FULL for new flavors)
-							const fillLevel = containerFillLevels[containerId] || FILL_LEVELS.FULL;
+							if (!containerFillLevels[containerId]) {
+								containerFillLevels[containerId] = FILL_LEVELS.FULL;
+							}
+							const fillLevel = containerFillLevels[containerId];
 							iceCreamFill.style.height = `${fillLevel}%`;
 							iceCreamFill.style.opacity = '0.8';
+							console.log(`📊 Set fill level for ${containerId} to ${fillLevel}%`);
 							
 							// Add click handler for toggling fill levels
-							iceCreamFill.onclick = () => toggleFillLevel(containerId);
+							iceCreamFill.onclick = (e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								console.log(`🖱️ Clicked ice cream for ${containerId}`);
+								toggleFillLevel(containerId);
+							};
+							console.log(`✅ Added click handler to ${containerId}`);
 						}
 						if (emptyIndicator) {
 							emptyIndicator.style.opacity = '0';
@@ -522,17 +532,27 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 
 			// Function to toggle fill level between FULL and HALF
 			function toggleFillLevel(containerId) {
-				const input = document.querySelector(`[data-container="${containerId}"]`);
-				if (!input || !input.value.trim()) return; // Only work with containers that have flavors
+				console.log(`🎯 toggleFillLevel called for ${containerId}`);
+				const input = document.getElementById(`flavor-${containerId}`);
+				console.log(`📝 Found input:`, input);
+				console.log(`📝 Input value:`, input?.value);
+				
+				if (!input || !input.value.trim()) {
+					console.log(`❌ No input or empty value for ${containerId}`);
+					return; // Only work with containers that have flavors
+				}
 				
 				// Toggle between FULL and HALF
 				const currentLevel = containerFillLevels[containerId] || FILL_LEVELS.FULL;
 				const newLevel = currentLevel === FILL_LEVELS.FULL ? FILL_LEVELS.HALF : FILL_LEVELS.FULL;
 				containerFillLevels[containerId] = newLevel;
+				console.log(`🔄 Toggling from ${currentLevel}% to ${newLevel}%`);
 				
 				// Update visual immediately
 				const container = input.closest('.group');
 				const iceCreamFill = container.querySelector('.ice-cream-fill');
+				console.log(`🎨 Found ice cream fill:`, iceCreamFill);
+				
 				if (iceCreamFill) {
 					iceCreamFill.style.height = `${newLevel}%`;
 					console.log(`🥃 Toggled ${containerId} fill level to ${newLevel}%`);
