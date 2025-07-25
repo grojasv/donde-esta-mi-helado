@@ -1,16 +1,38 @@
 ---
-
+// Import global styles with Tailwind CSS
+import '../styles/global.css';
 ---
 
-<html lang="en">
+<html lang="es">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<meta name="description" content="Track your ice cream flavors easily - Dónde Está Mi Helado?" />
+		<title>Dónde Está Mi Helado?</title>
 	</head>
-	<body>
-		<h1>Astro</h1>
+	<body class="bg-gradient-to-br from-blue-50 to-pink-50 min-h-screen">
+		<!-- Main container with mobile-first design -->
+		<div class="container mx-auto px-4 py-6 max-w-md">
+			<!-- App header -->
+			<header class="text-center mb-8">
+				<h1 class="text-3xl font-bold text-gray-800 mb-2">
+					🍦 Dónde Está Mi Helado?
+				</h1>
+				<p class="text-gray-600 text-sm">
+					Mantén registro de tus sabores favoritos
+				</p>
+			</header>
+
+			<!-- Main content area - placeholder for Phase 2 -->
+			<main>
+				<div class="bg-white rounded-lg shadow-lg p-6">
+					<p class="text-center text-gray-500">
+						¡Próximamente! La interfaz de seguimiento de helados estará aquí.
+					</p>
+				</div>
+			</main>
+		</div>
 	</body>
 </html>
