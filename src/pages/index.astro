@@ -175,14 +175,25 @@ import '../styles/global.css';
 						</div>
 					</div>
 
-					<!-- Enhanced status message -->
-					<div class="mt-8 text-center">
+					<!-- Enhanced status message with share functionality -->
+					<div class="mt-8 text-center space-y-4">
 						<p id="save-status" class="text-sm text-gray-500 flex items-center justify-center gap-2 transition-all duration-300">
 							<svg class="w-4 h-4 opacity-60" fill="currentColor" viewBox="0 0 20 20">
 								<path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
 							</svg>
 							Los cambios se guardarán automáticamente
 						</p>
+						
+						<!-- Share button -->
+						<button 
+							id="share-btn"
+							class="hidden px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+						>
+							<svg class="w-4 h-4 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+								<path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"></path>
+							</svg>
+							Compartir Sabores
+						</button>
 					</div>
 				</div>
 			</main>
@@ -193,8 +204,48 @@ import '../styles/global.css';
 			// Storage key for localStorage
 			const STORAGE_KEY = 'donde-esta-mi-helado-flavors';
 
+			// Function to load flavors from URL parameters
+			function loadFlavorsFromURL() {
+				try {
+					const urlParams = new URLSearchParams(window.location.search);
+					const sharedFlavors = urlParams.get('flavors');
+					
+					if (sharedFlavors) {
+						const flavors = JSON.parse(decodeURIComponent(sharedFlavors));
+						
+						// Load shared flavors into inputs
+						Object.keys(flavors).forEach(containerId => {
+							const input = document.getElementById(`flavor-${containerId}`);
+							if (input && flavors[containerId]) {
+								input.value = flavors[containerId];
+								// Add animation for shared flavors
+								input.classList.add('animate-pulse');
+								setTimeout(() => input.classList.remove('animate-pulse'), 500);
+							}
+						});
+						
+						// Save shared flavors to localStorage
+						localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+						
+						// Remove URL parameters for cleaner URL
+						window.history.replaceState({}, document.title, window.location.pathname);
+						
+						console.log('✅ Shared flavors loaded from URL');
+						return true;
+					}
+				} catch (error) {
+					console.error('❌ Error loading shared flavors:', error);
+				}
+				return false;
+			}
+
 			// Function to load saved flavors from localStorage
 			function loadFlavors() {
+				// First check for shared flavors in URL
+				if (loadFlavorsFromURL()) {
+					return;
+				}
+				
 				try {
 					const savedFlavors = localStorage.getItem(STORAGE_KEY);
 					if (savedFlavors) {
@@ -303,6 +354,90 @@ import '../styles/global.css';
 			// Debounced save function (saves 300ms after user stops typing - faster feedback)
 			const debouncedSave = debounce(saveFlavors, 300);
 
+			// Function to generate shareable URL with current flavors
+			function generateShareURL() {
+				try {
+					const flavors = {};
+					const inputs = document.querySelectorAll('.flavor-input');
+					let hasContent = false;
+					
+					inputs.forEach(input => {
+						const containerId = input.dataset.container;
+						const value = input.value.trim();
+						if (containerId && value) {
+							flavors[containerId] = value;
+							hasContent = true;
+						}
+					});
+					
+					if (hasContent) {
+						const flavorsParam = encodeURIComponent(JSON.stringify(flavors));
+						const shareURL = `${window.location.origin}${window.location.pathname}?flavors=${flavorsParam}`;
+						return shareURL;
+					}
+					return null;
+				} catch (error) {
+					console.error('❌ Error generating share URL:', error);
+					return null;
+				}
+			}
+
+			// Function to copy share URL to clipboard
+			async function copyShareURL() {
+				const shareURL = generateShareURL();
+				if (!shareURL) {
+					alert('⚠️ Agrega algunos sabores antes de compartir');
+					return;
+				}
+				
+				try {
+					await navigator.clipboard.writeText(shareURL);
+					
+					// Update button text temporarily
+					const shareBtn = document.getElementById('share-btn');
+					const originalText = shareBtn.innerHTML;
+					shareBtn.innerHTML = `
+						<svg class="w-4 h-4 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+						</svg>
+						¡Copiado!
+					`;
+					shareBtn.classList.add('from-green-500', 'to-green-600');
+					shareBtn.classList.remove('from-pink-500', 'to-purple-500');
+					
+					setTimeout(() => {
+						shareBtn.innerHTML = originalText;
+						shareBtn.classList.remove('from-green-500', 'to-green-600');
+						shareBtn.classList.add('from-pink-500', 'to-purple-500');
+					}, 2000);
+					
+					console.log('✅ Share URL copied to clipboard');
+				} catch (error) {
+					console.error('❌ Error copying to clipboard:', error);
+					// Fallback: show URL in alert
+					alert(`📋 Copia este enlace para compartir:\n\n${shareURL}`);
+				}
+			}
+
+			// Function to update share button visibility
+			function updateShareButton() {
+				const shareBtn = document.getElementById('share-btn');
+				const inputs = document.querySelectorAll('.flavor-input');
+				let hasContent = false;
+				
+				inputs.forEach(input => {
+					if (input.value.trim()) {
+						hasContent = true;
+					}
+				});
+				
+				if (hasContent) {
+					shareBtn.classList.remove('hidden');
+				} else {
+					shareBtn.classList.add('hidden');
+				}
+			}
+
 			// Initialize the app when DOM is loaded
 			document.addEventListener('DOMContentLoaded', function() {
 				// Add loading animation to main content
@@ -323,10 +458,16 @@ import '../styles/global.css';
 				const inputs = document.querySelectorAll('.flavor-input');
 				inputs.forEach(input => {
 					// Save on input (typing) with faster response
-					input.addEventListener('input', debouncedSave);
+					input.addEventListener('input', () => {
+						debouncedSave();
+						updateShareButton();
+					});
 					
 					// Save immediately on blur (when user leaves the field)
-					input.addEventListener('blur', saveFlavors);
+					input.addEventListener('blur', () => {
+						saveFlavors();
+						updateShareButton();
+					});
 					
 					// Add focus enhancement
 					input.addEventListener('focus', function() {
@@ -338,7 +479,16 @@ import '../styles/global.css';
 					});
 				});
 				
-				console.log('🍦 Dónde Está Mi Helado? initialized with enhanced UX');
+				// Add share button event listener
+				const shareBtn = document.getElementById('share-btn');
+				if (shareBtn) {
+					shareBtn.addEventListener('click', copyShareURL);
+				}
+				
+				// Initial share button update
+				updateShareButton();
+				
+				console.log('🍦 Dónde Está Mi Helado? initialized with enhanced UX and sharing');
 			});
 
 			// Save data before page unload (backup)
