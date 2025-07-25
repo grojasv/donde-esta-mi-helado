@@ -441,10 +441,11 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						// Show ice cream fill when there's a flavor
 						if (iceCreamFill) {
 							// Apply random creamy color if not already set
-							if (!iceCreamFill.dataset.colorSet) {
+							if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false') {
 								const randomColor = getRandomIceCreamColor();
-								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} opacity-0 transition-all duration-500 rounded-b-xl`;
+								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl`;
 								iceCreamFill.dataset.colorSet = 'true';
+								console.log(`🎨 Applied color to ${containerId}:`, randomColor);
 							}
 							iceCreamFill.style.height = '85%';
 							iceCreamFill.style.opacity = '0.8';
@@ -620,13 +621,15 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						debouncedSave();
 						updateShareButton();
 						updateEatButtons();
+						updateContainerVisuals(); // Immediate visual update
 					});
 					
-					// Save immediately on blur (when user leaves the field)
+					// Save immediately on blur (when user leaves the field)  
 					input.addEventListener('blur', () => {
 						saveFlavors();
 						updateShareButton();
 						updateEatButtons();
+						updateContainerVisuals(); // Ensure visual state is correct
 					});
 					
 					// Add focus enhancement
