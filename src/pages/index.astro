@@ -487,7 +487,7 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 							// Apply random creamy color if not already set
 							if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false') {
 								const randomColor = getRandomIceCreamColor();
-								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl cursor-pointer`;
+								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl cursor-pointer z-20`;
 								iceCreamFill.dataset.colorSet = 'true';
 								console.log(`🎨 Applied color to ${containerId}:`, randomColor);
 							}
@@ -500,16 +500,21 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 							iceCreamFill.style.height = `${fillLevel}%`;
 							iceCreamFill.style.opacity = '0.8';
 							console.log(`📊 Set fill level for ${containerId} to ${fillLevel}%`);
-							
-							// Add click handler for toggling fill levels
-							iceCreamFill.onclick = (e) => {
+						}
+						
+						// Make the ENTIRE ice cream visual container clickable for better UX
+						const iceCreamVisual = container.querySelector('.ice-cream-visual');
+						if (iceCreamVisual) {
+							iceCreamVisual.style.cursor = 'pointer';
+							iceCreamVisual.onclick = (e) => {
 								e.preventDefault();
 								e.stopPropagation();
-								console.log(`🖱️ Clicked ice cream for ${containerId}`);
+								console.log(`🖱️ Clicked ice cream VISUAL CONTAINER for ${containerId}`);
 								toggleFillLevel(containerId);
 							};
-							console.log(`✅ Added click handler to ${containerId}`);
+							console.log(`✅ Added click handler to ENTIRE visual container for ${containerId}`);
 						}
+						
 						if (emptyIndicator) {
 							emptyIndicator.style.opacity = '0';
 						}
@@ -518,11 +523,18 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						if (iceCreamFill) {
 							iceCreamFill.style.height = '0%';
 							iceCreamFill.style.opacity = '0';
-							iceCreamFill.onclick = null; // Remove click handler
 							// Reset color and fill level for next flavor
 							iceCreamFill.dataset.colorSet = 'false';
 							containerFillLevels[containerId] = FILL_LEVELS.EMPTY;
 						}
+						
+						// Remove click handler from visual container
+						const iceCreamVisual = container.querySelector('.ice-cream-visual');
+						if (iceCreamVisual) {
+							iceCreamVisual.style.cursor = '';
+							iceCreamVisual.onclick = null;
+						}
+						
 						if (emptyIndicator) {
 							emptyIndicator.style.opacity = '1';
 						}
