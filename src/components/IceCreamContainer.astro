@@ -40,7 +40,7 @@ const {
 			<!-- Container body (larger transparent cylinder) -->
 			<div class="w-12 h-10 sm:w-14 sm:h-12 md:w-16 md:h-14 bg-white/15 backdrop-blur-sm border-2 border-white/30 rounded-b-xl shadow-inner relative overflow-hidden">
 				<!-- Ice cream fill (hidden by default, shown when container has flavor) -->
-				<div class={`ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${lidBgGradient} opacity-0 transition-all duration-500 rounded-b-xl`} style="height: 0%;">
+				<div class="ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-100 to-white opacity-0 transition-all duration-500 rounded-b-xl" style="height: 0%;" data-color-set="false">
 					<!-- Ice cream texture/pattern -->
 					<div class="absolute inset-0 bg-white/20 bg-[radial-gradient(circle_at_2px_2px,_white_1px,_transparent_0)] opacity-30"></div>
 				</div>

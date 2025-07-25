@@ -164,6 +164,30 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 			// Storage key for localStorage
 			const STORAGE_KEY = 'donde-esta-mi-helado-flavors';
 
+			// Creamy ice cream colors for realistic variety
+			const ICE_CREAM_COLORS = [
+				'from-amber-100 to-yellow-100',     // Vanilla cream
+				'from-pink-100 to-rose-200',       // Strawberry
+				'from-orange-100 to-amber-200',    // Peach
+				'from-green-100 to-emerald-200',   // Mint chip
+				'from-purple-100 to-violet-200',   // Lavender
+				'from-yellow-100 to-amber-100',    // Banana
+				'from-orange-200 to-yellow-200',   // Mango
+				'from-pink-200 to-red-200',        // Cherry
+				'from-green-200 to-lime-200',      // Pistachio
+				'from-blue-100 to-cyan-200',       // Bubblegum
+				'from-gray-100 to-slate-200',      // Cookies & cream
+				'from-amber-200 to-orange-200',    // Caramel
+				'from-indigo-100 to-blue-200',     // Blueberry
+				'from-lime-100 to-green-200',      // Lime
+				'from-rose-100 to-pink-200'        // Cotton candy
+			];
+
+			// Function to get random ice cream color
+			function getRandomIceCreamColor() {
+				return ICE_CREAM_COLORS[Math.floor(Math.random() * ICE_CREAM_COLORS.length)];
+			}
+
 			// Function to load flavors from URL parameters
 			function loadFlavorsFromURL() {
 				try {
@@ -189,6 +213,9 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						
 						// Remove URL parameters for cleaner URL
 						window.history.replaceState({}, document.title, window.location.pathname);
+						
+						// Update visual states for loaded flavors
+						setTimeout(() => updateContainerVisuals(), 100);
 						
 						console.log('✅ Shared flavors loaded from URL');
 						return true;
@@ -221,6 +248,9 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 								setTimeout(() => input.classList.remove('animate-pulse'), 300);
 							}
 						});
+						
+						// Update visual states for loaded flavors
+						setTimeout(() => updateContainerVisuals(), 100);
 						
 						console.log('✅ Flavors loaded from localStorage');
 					}
@@ -410,6 +440,12 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					if (input.value.trim()) {
 						// Show ice cream fill when there's a flavor
 						if (iceCreamFill) {
+							// Apply random creamy color if not already set
+							if (!iceCreamFill.dataset.colorSet) {
+								const randomColor = getRandomIceCreamColor();
+								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} opacity-0 transition-all duration-500 rounded-b-xl`;
+								iceCreamFill.dataset.colorSet = 'true';
+							}
 							iceCreamFill.style.height = '85%';
 							iceCreamFill.style.opacity = '0.8';
 						}
@@ -421,6 +457,8 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						if (iceCreamFill) {
 							iceCreamFill.style.height = '0%';
 							iceCreamFill.style.opacity = '0';
+							// Reset color for next flavor
+							iceCreamFill.dataset.colorSet = 'false';
 						}
 						if (emptyIndicator) {
 							emptyIndicator.style.opacity = '1';
@@ -475,6 +513,12 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					const emptyIndicator = container.querySelector('.empty-indicator');
 					
 					if (iceCreamFill) {
+						// Ensure ice cream has a random color before draining animation
+						if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false') {
+							const randomColor = getRandomIceCreamColor();
+							iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} opacity-0 transition-all duration-500 rounded-b-xl`;
+							iceCreamFill.dataset.colorSet = 'true';
+						}
 						// Animate ice cream "draining" as it's being eaten
 						iceCreamFill.style.height = '20%';
 						iceCreamFill.style.opacity = '0.4';
