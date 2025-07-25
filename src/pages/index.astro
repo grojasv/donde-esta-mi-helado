@@ -398,6 +398,37 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 				}
 			}
 
+			// Function to update container visual states
+			function updateContainerVisuals() {
+				const inputs = document.querySelectorAll('.flavor-input');
+				inputs.forEach(input => {
+					const containerId = input.dataset.container;
+					const container = input.closest('.group');
+					const iceCreamFill = container.querySelector('.ice-cream-fill');
+					const emptyIndicator = container.querySelector('.empty-indicator');
+					
+					if (input.value.trim()) {
+						// Show ice cream fill when there's a flavor
+						if (iceCreamFill) {
+							iceCreamFill.style.height = '85%';
+							iceCreamFill.style.opacity = '0.8';
+						}
+						if (emptyIndicator) {
+							emptyIndicator.style.opacity = '0';
+						}
+					} else {
+						// Show empty state when no flavor
+						if (iceCreamFill) {
+							iceCreamFill.style.height = '0%';
+							iceCreamFill.style.opacity = '0';
+						}
+						if (emptyIndicator) {
+							emptyIndicator.style.opacity = '1';
+						}
+					}
+				});
+			}
+
 			// Function to update eat button states
 			function updateEatButtons() {
 				const eatBtns = document.querySelectorAll('.eat-btn');
@@ -417,6 +448,9 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 						btn.classList.add('opacity-0');
 					}
 				});
+				
+				// Update visual states too
+				updateContainerVisuals();
 			}
 
 			// Function to eat ice cream with fun animation
@@ -436,26 +470,47 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					eatBtn.innerHTML = '🤤';
 					await new Promise(resolve => setTimeout(resolve, 300));
 					
-					// Phase 2: Container shake and ice cream "disappear"
+					// Phase 2: Ice cream drain animation
+					const iceCreamFill = container.querySelector('.ice-cream-fill');
+					const emptyIndicator = container.querySelector('.empty-indicator');
+					
+					if (iceCreamFill) {
+						// Animate ice cream "draining" as it's being eaten
+						iceCreamFill.style.height = '20%';
+						iceCreamFill.style.opacity = '0.4';
+						iceCreamFill.style.transition = 'all 0.8s ease-in';
+					}
+					
 					container.classList.add('animate-bounce');
 					const iceCreamVisual = container.querySelector('.flex-shrink-0:first-child');
-					iceCreamVisual.style.transform = 'scale(0.8) rotate(5deg)';
+					iceCreamVisual.style.transform = 'scale(0.95) rotate(2deg)';
 					iceCreamVisual.style.transition = 'all 0.5s ease-out';
 					
 					await new Promise(resolve => setTimeout(resolve, 500));
 					
-					// Phase 3: Input field clear with fade effect
+					// Phase 3: Complete ice cream disappearance
+					if (iceCreamFill) {
+						iceCreamFill.style.height = '0%';
+						iceCreamFill.style.opacity = '0';
+						iceCreamFill.style.transition = 'all 0.4s ease-out';
+					}
+					if (emptyIndicator) {
+						emptyIndicator.style.opacity = '1';
+						emptyIndicator.style.transition = 'opacity 0.4s ease-in 0.2s';
+					}
+					
+					// Phase 4: Input field clear with fade effect
 					input.style.transform = 'scale(0.9)';
 					input.style.opacity = '0.3';
 					input.style.transition = 'all 0.3s ease-out';
 					
 					await new Promise(resolve => setTimeout(resolve, 300));
 					
-					// Phase 4: Clear the flavor and show "Yum!" feedback
+					// Phase 5: Clear the flavor and show "Yum!" feedback
 					input.value = '';
 					eatBtn.innerHTML = '😋';
 					
-					// Phase 5: Show success message
+					// Phase 6: Show success message
 					const originalBg = container.className;
 					container.classList.add('ring-4', 'ring-green-200', 'ring-opacity-75');
 					
@@ -469,7 +524,7 @@ import IceCreamContainer from '../components/IceCreamContainer.astro';
 					
 					await new Promise(resolve => setTimeout(resolve, 1500));
 					
-					// Phase 6: Reset everything
+					// Phase 7: Reset everything (but keep visual state empty since ice cream was eaten)
 					container.classList.remove('animate-bounce', 'ring-4', 'ring-green-200', 'ring-opacity-75');
 					iceCreamVisual.style.transform = '';
 					input.style.transform = '';
