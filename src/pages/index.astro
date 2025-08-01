@@ -32,6 +32,18 @@ try {
 
 // Format build timestamp
 const buildTime = new Date().toISOString();
+
+// Get Firebase environment variables for client-side use
+// These will be passed to the browser as inline JavaScript variables
+const firebaseEnvVars = {
+	apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
+	authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+	databaseURL: import.meta.env.PUBLIC_FIREBASE_DATABASE_URL,
+	projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+	storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+	messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+	appId: import.meta.env.PUBLIC_FIREBASE_APP_ID
+};
 ---
 
 <html lang="es">
@@ -248,29 +260,21 @@ const buildTime = new Date().toISOString();
 			// FIREBASE CONFIGURATION & INITIALIZATION  
 			// ========================================
 			
-			// Firebase configuration from environment variables
+			// Firebase configuration from server-side environment variables
+			// These are passed from Astro frontmatter to avoid client-side import.meta.env issues
 			const firebaseConfig = {
-				apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
-				authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
-				databaseURL: import.meta.env.PUBLIC_FIREBASE_DATABASE_URL,
-				projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
-				storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
-				messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-				appId: import.meta.env.PUBLIC_FIREBASE_APP_ID
+				apiKey: {JSON.stringify(firebaseEnvVars.apiKey)},
+				authDomain: {JSON.stringify(firebaseEnvVars.authDomain)},
+				databaseURL: {JSON.stringify(firebaseEnvVars.databaseURL)},
+				projectId: {JSON.stringify(firebaseEnvVars.projectId)},
+				storageBucket: {JSON.stringify(firebaseEnvVars.storageBucket)},
+				messagingSenderId: {JSON.stringify(firebaseEnvVars.messagingSenderId)},
+				appId: {JSON.stringify(firebaseEnvVars.appId)}
 			};
 
 			// Validate that all required environment variables are present
-			const requiredEnvVars = [
-				'PUBLIC_FIREBASE_API_KEY',
-				'PUBLIC_FIREBASE_AUTH_DOMAIN', 
-				'PUBLIC_FIREBASE_DATABASE_URL',
-				'PUBLIC_FIREBASE_PROJECT_ID',
-				'PUBLIC_FIREBASE_STORAGE_BUCKET',
-				'PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-				'PUBLIC_FIREBASE_APP_ID'
-			];
-
-			const missingVars = requiredEnvVars.filter(varName => !import.meta.env[varName]);
+			const requiredConfigKeys = ['apiKey', 'authDomain', 'databaseURL', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+			const missingVars = requiredConfigKeys.filter(key => !firebaseConfig[key] || firebaseConfig[key] === 'undefined');
 
 			let database = null;
 			let isFirebaseInitialized = false;
@@ -278,6 +282,7 @@ const buildTime = new Date().toISOString();
 			if (missingVars.length > 0) {
 				console.warn('⚠️ Missing Firebase environment variables:', missingVars);
 				console.warn('📝 Firebase will be disabled. App will use localStorage only.');
+				console.warn('🔧 Please check your Netlify environment variables or local .env file');
 			} else {
 				try {
 					// Initialize Firebase
