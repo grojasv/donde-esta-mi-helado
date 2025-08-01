@@ -238,24 +238,298 @@ const buildTime = new Date().toISOString();
 			</div>
 		</footer>
 
-		<!-- Enhanced client-side JavaScript with Firebase real-time sync -->
+		<!-- Enhanced client-side JavaScript with Firebase real-time sync (Inlined) -->
 		<script type="module">
-			// Import Firebase functions and session management
-			import { 
-				saveFlavorsToFirebase, 
-				saveFillLevelsToFirebase, 
-				loadFlavorsFromFirebase,
-				loadFillLevelsFromFirebase,
-				setupRealtimeListeners,
-				isFirebaseAvailable
-			} from '../lib/firebaseDataManager.js';
+			// Firebase imports (using CDN to avoid build issues)
+			import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
+			import { getDatabase, ref, set, get, onValue, off } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js';
+
+			// ========================================
+			// FIREBASE CONFIGURATION & INITIALIZATION  
+			// ========================================
 			
-			import { 
-				getOrCreateSessionId,
-				getCurrentSessionId,
-				generateShareableUrl,
-				clearSessionFromUrl
-			} from '../lib/sessionManager.js';
+			// Firebase configuration from environment variables
+			const firebaseConfig = {
+				apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
+				authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+				databaseURL: import.meta.env.PUBLIC_FIREBASE_DATABASE_URL,
+				projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+				storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+				messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+				appId: import.meta.env.PUBLIC_FIREBASE_APP_ID
+			};
+
+			// Validate that all required environment variables are present
+			const requiredEnvVars = [
+				'PUBLIC_FIREBASE_API_KEY',
+				'PUBLIC_FIREBASE_AUTH_DOMAIN', 
+				'PUBLIC_FIREBASE_DATABASE_URL',
+				'PUBLIC_FIREBASE_PROJECT_ID',
+				'PUBLIC_FIREBASE_STORAGE_BUCKET',
+				'PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+				'PUBLIC_FIREBASE_APP_ID'
+			];
+
+			const missingVars = requiredEnvVars.filter(varName => !import.meta.env[varName]);
+
+			let database = null;
+			let isFirebaseInitialized = false;
+
+			if (missingVars.length > 0) {
+				console.warn('⚠️ Missing Firebase environment variables:', missingVars);
+				console.warn('📝 Firebase will be disabled. App will use localStorage only.');
+			} else {
+				try {
+					// Initialize Firebase
+					const app = initializeApp(firebaseConfig);
+					database = getDatabase(app);
+					isFirebaseInitialized = true;
+					console.log('🔥 Firebase initialized successfully');
+				} catch (error) {
+					console.error('❌ Firebase initialization failed:', error);
+					console.log('📦 Falling back to localStorage only');
+				}
+			}
+
+			// ========================================
+			// SESSION MANAGEMENT FUNCTIONS
+			// ========================================
+			
+			function generateSessionId() {
+				const timestamp = Date.now().toString();
+				const randomSuffix = Math.random().toString(36).substring(2, 8);
+				return `ice${timestamp}${randomSuffix}`;
+			}
+
+			function isValidSessionId(sessionId) {
+				if (!sessionId || typeof sessionId !== 'string') {
+					return false;
+				}
+				const sessionRegex = /^ice[a-zA-Z0-9]{16,}$/;
+				return sessionRegex.test(sessionId);
+			}
+
+			function getCurrentSessionId() {
+				const urlParams = new URLSearchParams(window.location.search);
+				const sessionId = urlParams.get('session');
+				return (sessionId && isValidSessionId(sessionId)) ? sessionId : null;
+			}
+
+			function updateUrlWithSession(sessionId) {
+				if (!isValidSessionId(sessionId)) {
+					console.error('Invalid session ID provided:', sessionId);
+					return;
+				}
+				const newUrl = `${window.location.pathname}?session=${sessionId}`;
+				window.history.pushState({ sessionId }, '', newUrl);
+				console.log(`🔗 Updated URL with session: ${sessionId}`);
+			}
+
+			function clearSessionFromUrl() {
+				window.history.pushState({}, document.title, window.location.pathname);
+				console.log('🧹 Cleared session from URL - switched to local mode');
+			}
+
+			function generateShareableUrl(sessionId) {
+				if (!isValidSessionId(sessionId)) {
+					throw new Error('Invalid session ID provided');
+				}
+				return `${window.location.origin}${window.location.pathname}?session=${sessionId}`;
+			}
+
+			function getOrCreateSessionId() {
+				const urlSessionId = getCurrentSessionId();
+				if (urlSessionId) {
+					console.log(`📱 Using existing session from URL: ${urlSessionId}`);
+					return urlSessionId;
+				}
+				
+				const newSessionId = generateSessionId();
+				console.log(`🆕 Generated new session ID: ${newSessionId}`);
+				updateUrlWithSession(newSessionId);
+				return newSessionId;
+			}
+
+			// ========================================
+			// FIREBASE DATA MANAGEMENT FUNCTIONS
+			// ========================================
+			
+			function getSessionRef(sessionId, dataType = '') {
+				const basePath = `sessions/${sessionId}`;
+				return dataType ? ref(database, `${basePath}/${dataType}`) : ref(database, basePath);
+			}
+
+			async function saveFlavorsToFirebase(sessionId, flavors) {
+				if (!isFirebaseInitialized) {
+					throw new Error('Firebase not initialized');
+				}
+				
+				try {
+					const flavorsRef = getSessionRef(sessionId, 'flavors');
+					await set(flavorsRef, flavors);
+					
+					const metadataRef = getSessionRef(sessionId, 'metadata');
+					await set(metadataRef, {
+						lastUpdated: Date.now(),
+						version: '1.0'
+					});
+					
+					console.log(`✅ Flavors saved to Firebase session: ${sessionId}`);
+					localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+					return true;
+				} catch (error) {
+					console.error('❌ Error saving flavors to Firebase:', error);
+					localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+					throw error;
+				}
+			}
+
+			async function saveFillLevelsToFirebase(sessionId, fillLevels) {
+				if (!isFirebaseInitialized) {
+					throw new Error('Firebase not initialized');
+				}
+				
+				try {
+					const fillLevelsRef = getSessionRef(sessionId, 'fillLevels');
+					await set(fillLevelsRef, fillLevels);
+					console.log(`✅ Fill levels saved to Firebase session: ${sessionId}`);
+					localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(fillLevels));
+					return true;
+				} catch (error) {
+					console.error('❌ Error saving fill levels to Firebase:', error);
+					localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(fillLevels));
+					throw error;
+				}
+			}
+
+			async function loadFlavorsFromFirebase(sessionId) {
+				if (!isFirebaseInitialized) {
+					throw new Error('Firebase not initialized');
+				}
+				
+				try {
+					const flavorsRef = getSessionRef(sessionId, 'flavors');
+					const snapshot = await get(flavorsRef);
+					
+					if (snapshot.exists()) {
+						const flavors = snapshot.val();
+						console.log(`📥 Flavors loaded from Firebase session: ${sessionId}`);
+						localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+						return flavors;
+					} else {
+						console.log(`📭 No flavors found in Firebase session: ${sessionId}`);
+						return {};
+					}
+				} catch (error) {
+					console.error('❌ Error loading flavors from Firebase:', error);
+					
+					try {
+						const savedFlavors = localStorage.getItem(STORAGE_KEY);
+						if (savedFlavors) {
+							console.log('📦 Using localStorage fallback for flavors');
+							return JSON.parse(savedFlavors);
+						}
+					} catch (localError) {
+						console.error('❌ Error loading from localStorage:', localError);
+					}
+					
+					return {};
+				}
+			}
+
+			async function loadFillLevelsFromFirebase(sessionId) {
+				if (!isFirebaseInitialized) {
+					throw new Error('Firebase not initialized');
+				}
+				
+				try {
+					const fillLevelsRef = getSessionRef(sessionId, 'fillLevels');
+					const snapshot = await get(fillLevelsRef);
+					
+					if (snapshot.exists()) {
+						const fillLevels = snapshot.val();
+						console.log(`📥 Fill levels loaded from Firebase session: ${sessionId}`);
+						localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(fillLevels));
+						return fillLevels;
+					} else {
+						console.log(`📭 No fill levels found in Firebase session: ${sessionId}`);
+						return {};
+					}
+				} catch (error) {
+					console.error('❌ Error loading fill levels from Firebase:', error);
+					
+					try {
+						const savedFillLevels = localStorage.getItem(FILL_LEVELS_KEY);
+						if (savedFillLevels) {
+							console.log('📦 Using localStorage fallback for fill levels');
+							return JSON.parse(savedFillLevels);
+						}
+					} catch (localError) {
+						console.error('❌ Error loading from localStorage:', localError);
+					}
+					
+					return {};
+				}
+			}
+
+			function setupRealtimeListeners(sessionId, onFlavorsChange, onFillLevelsChange) {
+				if (!isFirebaseInitialized) {
+					console.log('⚠️ Firebase not available - real-time sync disabled');
+					return () => {}; // Return empty cleanup function
+				}
+				
+				const flavorsRef = getSessionRef(sessionId, 'flavors');
+				const fillLevelsRef = getSessionRef(sessionId, 'fillLevels');
+				
+				const flavorsUnsubscribe = onValue(flavorsRef, (snapshot) => {
+					if (snapshot.exists()) {
+						const flavors = snapshot.val();
+						console.log(`🔄 Real-time flavors update received for session: ${sessionId}`);
+						localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+						if (onFlavorsChange) {
+							onFlavorsChange(flavors);
+						}
+					}
+				}, (error) => {
+					console.error('❌ Error in flavors listener:', error);
+				});
+				
+				const fillLevelsUnsubscribe = onValue(fillLevelsRef, (snapshot) => {
+					if (snapshot.exists()) {
+						const fillLevels = snapshot.val();
+						console.log(`🔄 Real-time fill levels update received for session: ${sessionId}`);
+						localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(fillLevels));
+						if (onFillLevelsChange) {
+							onFillLevelsChange(fillLevels);
+						}
+					}
+				}, (error) => {
+					console.error('❌ Error in fill levels listener:', error);
+				});
+				
+				console.log(`👂 Real-time listeners set up for session: ${sessionId}`);
+				
+				return () => {
+					console.log(`👋 Cleaning up listeners for session: ${sessionId}`);
+					flavorsUnsubscribe();
+					fillLevelsUnsubscribe();
+				};
+			}
+
+			async function isFirebaseAvailable() {
+				if (!isFirebaseInitialized) {
+					return false;
+				}
+				
+				try {
+					const testRef = ref(database, '.info/connected');
+					const snapshot = await get(testRef);
+					return true;
+				} catch (error) {
+					console.log('🔌 Firebase appears to be offline');
+					return false;
+				}
+			}
 
 			// Global session and state management
 			let currentSessionId = null;
