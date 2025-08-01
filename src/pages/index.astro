@@ -641,23 +641,36 @@ const firebaseEnvVars = {
 			// Fallback function to load from localStorage
 			async function loadLocalStorageData() {
 				try {
+					console.log('📦 Loading from localStorage...');
+					console.log('Storage keys:', {STORAGE_KEY, FILL_LEVELS_KEY});
+					
 					// Load flavors from localStorage
 					const savedFlavors = localStorage.getItem(STORAGE_KEY);
+					console.log('Saved flavors:', savedFlavors);
+					
 					if (savedFlavors) {
 						const flavors = JSON.parse(savedFlavors);
+						console.log('Parsed flavors:', flavors);
 						applyFlavorsToUI(flavors);
+					} else {
+						console.log('No saved flavors found in localStorage');
 					}
 					
 					// Load fill levels from localStorage
 					const savedFillLevels = localStorage.getItem(FILL_LEVELS_KEY);
+					console.log('Saved fill levels:', savedFillLevels);
+					
 					if (savedFillLevels) {
 						containerFillLevels = JSON.parse(savedFillLevels);
+						console.log('Parsed fill levels:', containerFillLevels);
+					} else {
+						console.log('No saved fill levels found in localStorage');
 					}
 					
 					// Update visual states
 					setTimeout(() => updateContainerVisuals(), 100);
 					
-					console.log('📦 Data loaded from localStorage');
+					console.log('✅ Data loaded from localStorage successfully');
 					
 				} catch (error) {
 					console.error('❌ Error loading from localStorage:', error);
@@ -746,21 +759,27 @@ const firebaseEnvVars = {
 						}
 					});
 					
-					// Save to Firebase if online and session exists
-					if (isOnline && currentSessionId) {
+					console.log('💾 Saving flavors:', flavors);
+					console.log('🔥 Firebase status:', {isOnline, currentSessionId, isFirebaseInitialized});
+					
+					// Always save to localStorage as backup
+					localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+					console.log('✅ Flavors saved to localStorage');
+					
+					// Also try to save to Firebase if online and session exists
+					if (isOnline && isFirebaseInitialized && currentSessionId) {
 						try {
+							console.log('🔄 Attempting Firebase save...');
 							await saveFlavorsToFirebase(currentSessionId, flavors);
+							console.log('✅ Flavors saved to Firebase');
 							showSyncStatus('synced');
-							return; // Don't execute the old UI code if Firebase succeeded
 						} catch (error) {
 							console.error('❌ Error saving to Firebase:', error);
+							console.error('Firebase error details:', error.message);
 							showSyncStatus('error');
-							// Fallback to localStorage
-							localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
-							return;
 						}
 					} else {
-						localStorage.setItem(STORAGE_KEY, JSON.stringify(flavors));
+						console.log('📦 Firebase not available - using localStorage only');
 						showSyncStatus('offline');
 					}
 					
@@ -859,7 +878,7 @@ const firebaseEnvVars = {
 						break;
 					default:
 						icon = `<svg class="w-4 h-4 opacity-60" fill="currentColor" viewBox="0 0 20 20">
-							<path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 616 0z" clip-rule="evenodd"></path>
+															<path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
 						</svg>`;
 						message = 'Los cambios se sincronizarán automáticamente';
 						className = 'text-sm text-gray-500 flex items-center justify-center gap-2 transition-all duration-300';
