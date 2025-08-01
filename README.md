@@ -26,7 +26,7 @@
 - **🎨 Professional Design**: Modern glass-morphism with smooth animations
 - **📱 Mobile-First**: Optimized for real-world mobile usage  
 - **💾 Smart Persistence**: Never lose your data with intelligent auto-save + offline support
-- **🔗 Session Sharing**: Share your ice cream room with family/friends
+- **🔗 Fun Session Sharing**: Share memorable ice cream rooms like `creamy-sundae-42`
 - **♿ Accessibility**: WCAG compliant with excellent UX
 - **🚀 Production-Ready**: Live, fast, and reliable worldwide
 
@@ -70,13 +70,13 @@
 - **NEW**: Larger clickable areas for better touch interaction
 - Works offline after first load
 
-🔗 **Advanced URL Sharing**
-- **NEW**: Ultra-compact URLs (60-80% shorter than before!)
-- Share both flavors AND fill levels (full/half states)
-- Copy shareable URLs to clipboard with one click
-- Recipients get exact visual state automatically loaded
-- Clean, readable URLs with smart parameter handling
-- **NEW**: Complete container state preservation
+🔗 **Fun Session Sharing**
+- **NEW**: Memorable session IDs with ice cream themes!
+- Format: `adjective-noun-number` (e.g., `creamy-sundae-42`, `frosty-waffle-123`)
+- Real-time sync across all devices in the same session
+- Share your ice cream room with friends using fun URLs
+- Over 575,000 unique combinations available
+- Easy to remember and share verbally or via text
 
 ♿ **Accessible**
 - WCAG compliant color contrasts
@@ -124,25 +124,28 @@ npm run build
 8. **Refresh the page** - your flavors AND fill levels are still there
 9. **Use on mobile** - optimized for touch devices
 
-### 🔗 **Sharing Examples**
+### 🔗 **Session Sharing Examples**
 
-**New Compact Format (60-80% shorter!):**
+**Fun Session URLs:**
 ```
-https://teal-figolla-f5928c.netlify.app/?d=A:Chocolate:F|B:Vanilla:H|C:Strawberry:F
+https://teal-figolla-f5928c.netlify.app/?session=creamy-sundae-42
+https://teal-figolla-f5928c.netlify.app/?session=frosty-waffle-123
+https://teal-figolla-f5928c.netlify.app/?session=chunky-sprinkles-789
 ```
 
-**What this means:**
-- Container A: "Chocolate" at Full (80%)
-- Container B: "Vanilla" at Half (35%) 
-- Container C: "Strawberry" at Full (80%)
-
-When someone clicks this link, they get the EXACT same visual experience - including fill levels!
+**How it works:**
+- Each session gets a fun, memorable ice cream-themed name
+- Share the URL with friends and family
+- All devices in the same session sync in real-time
+- Changes appear instantly across all connected devices
+- Easy to remember: "Join my ice cream session at creamy-sundae-42!"
 
 ## 🛠️ Technical Stack
 
 - **Framework**: [Astro](https://astro.build/) v5.12.3
 - **Styling**: [TailwindCSS](https://tailwindcss.com/) v4.1.11  
-- **Storage**: Browser localStorage API
+- **Real-time Database**: [Firebase](https://firebase.google.com/) Realtime Database
+- **Storage**: Browser localStorage API (offline fallback)
 - **Deployment**: [Netlify](https://netlify.com/) with automatic deployments
 - **Version Control**: Git + GitHub
 
@@ -152,12 +155,14 @@ When someone clicks this link, they get the EXACT same visual experience - inclu
 donde-esta-mi-helado/
 ├── src/
 │   ├── pages/
-│   │   └── index.astro          # Main application
+│   │   └── index.astro          # Main application with Firebase integration
 │   └── styles/
 │       └── global.css           # TailwindCSS imports
 ├── public/                      # Static assets
 ├── dist/                        # Production build
 ├── PROJECT_PLAN.md             # Development phases
+├── FIREBASE_SETUP.md           # Firebase configuration guide
+├── env.example                 # Environment variables template
 └── package.json                # Dependencies
 ```
 
