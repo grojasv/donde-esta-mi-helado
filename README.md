@@ -1,6 +1,6 @@
 # 🍦 Dónde Está Mi Helado?
 
-**A beautiful, mobile-first ice cream flavor tracker with localStorage persistence**
+**A beautiful, mobile-first ice cream flavor tracker with real-time multi-device synchronization**
 
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/grojasv/donde-esta-mi-helado)
 
@@ -10,7 +10,7 @@
 
 ## 🎯 Project Showcase
 
-**"Dónde Está Mi Helado?"** is a complete, production-ready web application built following modern development practices through **6 comprehensive phases**:
+**"Dónde Está Mi Helado?"** is a complete, production-ready web application built following modern development practices through **7 comprehensive phases**:
 
 ### 🏗️ **Development Journey**
 - **⚡ Phase 1**: Foundation Setup (Astro + TailwindCSS + Git)
@@ -19,12 +19,14 @@
 - **🎨 Phase 4**: Visual Polish (glass-morphism + animations + accessibility)
 - **🚀 Phase 5**: Deployment (GitHub + Netlify + automatic deployments)
 - **🎁 Phase 6**: Final Enhancements (custom favicon + URL sharing + documentation)
+- **🔄 Phase 7**: Real-Time Multi-Device Sync (Firebase + session sharing + offline support)
 
 ### 🌟 **What Makes This Special**
+- **🔄 Real-Time Sync**: Changes appear instantly across all connected devices
 - **🎨 Professional Design**: Modern glass-morphism with smooth animations
 - **📱 Mobile-First**: Optimized for real-world mobile usage  
-- **💾 Smart Persistence**: Never lose your data with intelligent auto-save
-- **🔗 URL Sharing**: Share your ice cream flavors via simple links
+- **💾 Smart Persistence**: Never lose your data with intelligent auto-save + offline support
+- **🔗 Session Sharing**: Share your ice cream room with family/friends
 - **♿ Accessibility**: WCAG compliant with excellent UX
 - **🚀 Production-Ready**: Live, fast, and reliable worldwide
 
@@ -97,12 +99,18 @@ cd donde-esta-mi-helado
 # Install dependencies
 npm install
 
+# Set up environment variables (optional - for Firebase real-time sync)
+cp env.example .env
+# Edit .env and add your Firebase configuration
+
 # Start development server
 npm run dev
 
 # Build for production
 npm run build
 ```
+
+> **📝 Note**: The app works perfectly without Firebase configuration (uses localStorage), but for **real-time multi-device synchronization**, you'll need to set up Firebase. See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed instructions.
 
 ## 🎯 How to Use
 
