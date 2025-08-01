@@ -50,12 +50,46 @@ const firebaseEnvVars = {
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 		<meta name="generator" content={Astro.generator} />
 		<meta name="description" content="Track your ice cream flavors easily - Dónde Está Mi Helado?" />
 		<title>Dónde Está Mi Helado?</title>
+		
+		<!-- PWA Manifest -->
+		<link rel="manifest" href="/manifest.json" />
+		
+		<!-- PWA Meta Tags -->
+		<meta name="theme-color" content="#3B82F6" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-title" content="Ice Cream Tracker" />
+		
+		<!-- iOS Icons -->
+		<link rel="apple-touch-icon" sizes="72x72" href="/icons/app-icon.svg" />
+		<link rel="apple-touch-icon" sizes="96x96" href="/icons/app-icon.svg" />
+		<link rel="apple-touch-icon" sizes="128x128" href="/icons/app-icon.svg" />
+		<link rel="apple-touch-icon" sizes="144x144" href="/icons/app-icon.svg" />
+		<link rel="apple-touch-icon" sizes="152x152" href="/icons/app-icon.svg" />
+		<link rel="apple-touch-icon" sizes="192x192" href="/icons/app-icon.svg" />
+		<link rel="apple-touch-icon" sizes="384x384" href="/icons/app-icon.svg" />
+		<link rel="apple-touch-icon" sizes="512x512" href="/icons/app-icon.svg" />
+		
+		<!-- Microsoft Tiles -->
+		<meta name="msapplication-TileColor" content="#3B82F6" />
+		<meta name="msapplication-TileImage" content="/icons/app-icon.svg" />
+		
+		<!-- Safe area CSS variables -->
+		<style>
+			:root {
+				--safe-area-inset-top: env(safe-area-inset-top);
+				--safe-area-inset-right: env(safe-area-inset-right);
+				--safe-area-inset-bottom: env(safe-area-inset-bottom);
+				--safe-area-inset-left: env(safe-area-inset-left);
+			}
+		</style>
 	</head>
-	<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-pink-50 min-h-screen transition-all duration-300">
+	<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-pink-50 min-h-screen transition-all duration-300 select-none overscroll-none">
 		<!-- Main container with enhanced mobile-first design -->
 		<div class="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-md">
 			<!-- App header with improved animations -->
@@ -1329,6 +1363,134 @@ const firebaseEnvVars = {
 				updateEatButtons();
 				
 				console.log('🍦 Dónde Está Mi Helado? initialized with enhanced UX and sharing');
+			
+			// ========================================
+			// PWA SERVICE WORKER REGISTRATION
+			// ========================================
+			
+			// Register service worker for offline functionality
+			if ('serviceWorker' in navigator) {
+				window.addEventListener('load', async () => {
+					try {
+						const registration = await navigator.serviceWorker.register('/sw.js');
+						console.log('✅ Service Worker registered successfully', registration);
+						
+						// Listen for service worker updates
+						registration.addEventListener('updatefound', () => {
+							const newWorker = registration.installing;
+							newWorker.addEventListener('statechange', () => {
+								if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+									console.log('🔄 New version available - refresh to update');
+									// Could show a user notification here
+								}
+							});
+						});
+						
+					} catch (error) {
+						console.error('❌ Service Worker registration failed:', error);
+					}
+				});
+				
+				// Listen for messages from service worker
+				navigator.serviceWorker.addEventListener('message', (event) => {
+					console.log('📨 Message from Service Worker:', event.data);
+					
+					if (event.data.type === 'SYNC_FIREBASE') {
+						console.log('🔄 Service Worker requesting Firebase sync');
+						// Trigger Firebase sync when connection is restored
+						if (currentSessionId && isFirebaseInitialized) {
+							saveFlavors();
+							saveFillLevels();
+						}
+					}
+				});
+			}
+			
+			// ========================================
+			// PWA INSTALLATION PROMPT
+			// ========================================
+			
+			let deferredPrompt;
+			let installButton;
+			
+			// Create install button
+			function createInstallButton() {
+				installButton = document.createElement('button');
+				installButton.innerHTML = `
+					<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+						<path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+					</svg>
+					Instalar App
+				`;
+				installButton.className = 'hidden px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg hover:from-green-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-sm font-medium flex items-center mx-auto mt-4';
+				installButton.onclick = installApp;
+				
+				// Add to share button container
+				const shareContainer = document.getElementById('share-btn').parentElement;
+				shareContainer.appendChild(installButton);
+			}
+			
+			// PWA install prompt handling
+			window.addEventListener('beforeinstallprompt', (e) => {
+				console.log('📱 PWA install prompt available');
+				e.preventDefault();
+				deferredPrompt = e;
+				
+				// Show install button
+				if (!installButton) {
+					createInstallButton();
+				}
+				installButton.classList.remove('hidden');
+			});
+			
+			// Install app function
+			async function installApp() {
+				if (!deferredPrompt) {
+					console.log('❌ No install prompt available');
+					return;
+				}
+				
+				// Show the install prompt
+				deferredPrompt.prompt();
+				
+				// Wait for the user's response
+				const { outcome } = await deferredPrompt.userChoice;
+				console.log(`👤 User response to install prompt: ${outcome}`);
+				
+				if (outcome === 'accepted') {
+					console.log('✅ User accepted the install prompt');
+				} else {
+					console.log('❌ User dismissed the install prompt');
+				}
+				
+				// Hide the install button
+				installButton.classList.add('hidden');
+				deferredPrompt = null;
+			}
+			
+			// Handle successful installation
+			window.addEventListener('appinstalled', () => {
+				console.log('🎉 PWA was installed successfully');
+				if (installButton) {
+					installButton.classList.add('hidden');
+				}
+				deferredPrompt = null;
+				
+				// Optional: Track installation event
+				showSyncStatus('synced');
+				setTimeout(() => {
+					const status = document.getElementById('save-status');
+					if (status) {
+						status.innerHTML = `
+							<svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+							</svg>
+							¡App instalada correctamente! 📱
+						`;
+						status.className = 'text-sm text-green-600 flex items-center justify-center gap-2 transition-all duration-300';
+					}
+				}, 1000);
+			});
 			});
 
 			// Save data and clean up listeners before page unload
@@ -1342,8 +1504,54 @@ const firebaseEnvVars = {
 			});
 		</script>
 
-		<!-- Custom CSS for additional animations -->
+		<!-- Custom CSS for additional animations and PWA native experience -->
 		<style>
+			/* PWA Native App Enhancements */
+			html, body {
+				-webkit-overflow-scrolling: touch;
+				overscroll-behavior: none;
+				-webkit-touch-callout: none;
+				-webkit-tap-highlight-color: transparent;
+				touch-action: manipulation;
+			}
+			
+			/* Allow text selection in input fields only */
+			.flavor-input {
+				-webkit-user-select: text;
+				-moz-user-select: text;
+				-ms-user-select: text;
+				user-select: text;
+			}
+			
+			/* PWA Safe Area Support */
+			body {
+				padding-top: max(20px, var(--safe-area-inset-top));
+				padding-left: var(--safe-area-inset-left);
+				padding-right: var(--safe-area-inset-right);
+				padding-bottom: var(--safe-area-inset-bottom);
+			}
+			
+			/* Native-style button interactions */
+			button, .clickable {
+				-webkit-tap-highlight-color: transparent;
+				touch-action: manipulation;
+				cursor: pointer;
+			}
+			
+			button:active, .clickable:active {
+				transform: scale(0.97);
+				transition: transform 0.1s ease-in-out;
+			}
+			
+			/* Native-style form inputs */
+			.flavor-input {
+				-webkit-appearance: none;
+				appearance: none;
+				border-radius: 12px;
+				font-size: 16px; /* Prevents zoom on iOS */
+				transition: all 0.2s ease;
+			}
+
 			@keyframes fade-in {
 				from {
 					opacity: 0;
@@ -1365,6 +1573,15 @@ const firebaseEnvVars = {
 					transform: translateY(0);
 				}
 			}
+			
+			@keyframes pulse-gentle {
+				0%, 100% {
+					transform: scale(1);
+				}
+				50% {
+					transform: scale(1.02);
+				}
+			}
 
 			.animate-fade-in {
 				animation: fade-in 0.8s ease-out;
@@ -1372,6 +1589,10 @@ const firebaseEnvVars = {
 
 			.animate-slide-up {
 				animation: slide-up 0.6s ease-out 0.2s both;
+			}
+			
+			.animate-pulse-gentle {
+				animation: pulse-gentle 2s ease-in-out infinite;
 			}
 
 			/* Enhanced scroll behavior */
@@ -1381,8 +1602,9 @@ const firebaseEnvVars = {
 
 			/* Custom focus styles for better accessibility */
 			.flavor-input:focus {
+				outline: none;
 				transform: translateY(-1px);
-				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+				box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
 			}
 
 			/* Backdrop blur support fallback */
@@ -1390,6 +1612,53 @@ const firebaseEnvVars = {
 				.backdrop-blur-sm {
 					background: rgba(255, 255, 255, 0.9);
 				}
+			}
+			
+			/* PWA Standalone mode detection */
+			@media (display-mode: standalone) {
+				body {
+					background-attachment: fixed;
+				}
+				
+				/* Hide scrollbars in PWA mode for cleaner look */
+				::-webkit-scrollbar {
+					display: none;
+				}
+				
+				* {
+					-ms-overflow-style: none;
+					scrollbar-width: none;
+				}
+				
+				/* Add subtle shadow to indicate app boundaries */
+				.container {
+					box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+				}
+			}
+			
+			/* iOS specific adjustments */
+			@supports (-webkit-touch-callout: none) {
+				.ios-safe-top {
+					padding-top: max(20px, var(--safe-area-inset-top));
+				}
+				
+				/* iOS status bar integration */
+				@media (display-mode: standalone) {
+					body {
+						background: linear-gradient(135deg, #EBF4FF 0%, #E0E7FF 50%, #FCE7F3 100%);
+					}
+				}
+			}
+			
+			/* Haptic feedback simulation */
+			@keyframes haptic-light {
+				0% { transform: scale(1); }
+				50% { transform: scale(0.98); }
+				100% { transform: scale(1); }
+			}
+			
+			.haptic-feedback {
+				animation: haptic-light 0.1s ease-out;
 			}
 		</style>
 	</body>

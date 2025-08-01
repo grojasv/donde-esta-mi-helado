@@ -1,0 +1,70 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <defs>
+    <radialGradient id="bgGradient" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Ice cream gradients -->
+    <radialGradient id="strawberry" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#FDF2F8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F472B6;stop-opacity:1" />
+    </radialGradient>
+    
+    <radialGradient id="vanilla" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#FFFBEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FCD34D;stop-opacity:1" />
+    </radialGradient>
+    
+    <radialGradient id="mint" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#ECFDF5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#34D399;stop-opacity:1" />
+    </radialGradient>
+    
+    <radialGradient id="cone" cx="50%" cy="20%" r="80%">
+      <stop offset="0%" style="stop-color:#FEF3C7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <circle cx="256" cy="256" r="256" fill="url(#bgGradient)"/>
+  
+  <!-- Waffle cone -->
+  <path d="M 200 320 L 256 480 L 312 320 Z" fill="url(#cone)" stroke="#92400E" stroke-width="3"/>
+  
+  <!-- Waffle pattern on cone -->
+  <path d="M 210 330 L 302 330 M 215 350 L 297 350 M 220 370 L 292 370 M 225 390 L 287 390 M 230 410 L 282 410 M 235 430 L 277 430 M 240 450 L 272 450" 
+        stroke="#92400E" stroke-width="2" opacity="0.6"/>
+  <path d="M 220 325 L 235 450 M 240 325 L 250 450 M 260 325 L 265 450 M 280 325 L 275 450 M 292 325 L 287 450" 
+        stroke="#92400E" stroke-width="2" opacity="0.6"/>
+  
+  <!-- Bottom scoop - Mint -->
+  <circle cx="256" cy="300" r="55" fill="url(#mint)" stroke="#FFFFFF" stroke-width="4"/>
+  
+  <!-- Middle scoop - Vanilla -->
+  <circle cx="256" cy="230" r="50" fill="url(#vanilla)" stroke="#FFFFFF" stroke-width="4"/>
+  
+  <!-- Top scoop - Strawberry -->
+  <circle cx="256" cy="170" r="45" fill="url(#strawberry)" stroke="#FFFFFF" stroke-width="4"/>
+  
+  <!-- Cherry on top -->
+  <circle cx="256" cy="120" r="12" fill="#DC2626"/>
+  <ellipse cx="256" cy="115" rx="3" ry="8" fill="#16A34A"/>
+  
+  <!-- Sparkles/highlights -->
+  <circle cx="220" cy="160" r="4" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="290" cy="200" r="3" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="235" cy="280" r="3" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="280" cy="320" r="4" fill="#FFFFFF" opacity="0.8"/>
+  
+  <!-- Container indicators (small rectangles) -->
+  <rect x="80" y="180" width="20" height="15" rx="3" fill="#6B7280" opacity="0.7"/>
+  <rect x="80" y="200" width="20" height="15" rx="3" fill="#6B7280" opacity="0.7"/>
+  <rect x="80" y="220" width="20" height="15" rx="3" fill="#6B7280" opacity="0.7"/>
+  
+  <rect x="412" y="180" width="20" height="15" rx="3" fill="#6B7280" opacity="0.7"/>
+  <rect x="412" y="200" width="20" height="15" rx="3" fill="#6B7280" opacity="0.7"/>
+  <rect x="412" y="220" width="20" height="15" rx="3" fill="#6B7280" opacity="0.7"/>
+</svg>
