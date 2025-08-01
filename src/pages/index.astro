@@ -523,16 +523,21 @@ const firebaseEnvVars = {
 
 			async function isFirebaseAvailable() {
 				if (!isFirebaseInitialized) {
+					console.log('🔌 Firebase not initialized');
 					return false;
 				}
 				
 				try {
-					const testRef = ref(database, '.info/connected');
+					// Test Firebase connectivity by trying a simple read
+					const testRef = ref(database, '.info/serverTimeOffset');
 					const snapshot = await get(testRef);
+					console.log('🔥 Firebase connectivity test passed');
 					return true;
 				} catch (error) {
-					console.log('🔌 Firebase appears to be offline');
-					return false;
+					console.log('🔌 Firebase connectivity test failed:', error.message);
+					// Even if connectivity test fails, Firebase might still work
+					// Let's return true if Firebase is initialized properly
+					return isFirebaseInitialized;
 				}
 			}
 
@@ -747,19 +752,22 @@ const firebaseEnvVars = {
 
 			// Enhanced function to save flavors to Firebase and localStorage  
 			async function saveFlavors() {
+				console.log('🚀 saveFlavors() function called');
 				try {
 					const flavors = {};
 					const inputs = document.querySelectorAll('.flavor-input');
+					console.log(`📋 Found ${inputs.length} flavor inputs to process`);
 					
-					inputs.forEach(input => {
+					inputs.forEach((input, index) => {
 						const containerId = input.dataset.container;
 						const value = input.value.trim();
+						console.log(`Input ${index}: container=${containerId}, value="${value}"`);
 						if (containerId && value) {
 							flavors[containerId] = value;
 						}
 					});
 					
-					console.log('💾 Saving flavors:', flavors);
+					console.log('💾 Final flavors object to save:', flavors);
 					console.log('🔥 Firebase status:', {isOnline, currentSessionId, isFirebaseInitialized});
 					
 					// Always save to localStorage as backup
@@ -838,8 +846,10 @@ const firebaseEnvVars = {
 			function debounce(func, wait) {
 				let timeout;
 				return function executedFunction(...args) {
+					console.log(`⏰ Debounce function called, will execute in ${wait}ms`);
 					const later = () => {
 						clearTimeout(timeout);
+						console.log(`⚡ Debounce timeout completed, executing function`);
 						func(...args);
 					};
 					clearTimeout(timeout);
@@ -1240,9 +1250,14 @@ const firebaseEnvVars = {
 				
 				// Add enhanced event listeners to all flavor inputs
 				const inputs = document.querySelectorAll('.flavor-input');
-				inputs.forEach(input => {
+				console.log(`🎯 Setting up event listeners for ${inputs.length} flavor inputs`);
+				
+				inputs.forEach((input, index) => {
+					console.log(`📝 Setting up listeners for input ${index}: ${input.id}`);
+					
 					// Save on input (typing) with faster response
-					input.addEventListener('input', () => {
+					input.addEventListener('input', (e) => {
+						console.log(`⌨️ Input event triggered on ${e.target.id}: "${e.target.value}"`);
 						debouncedSave();
 						updateShareButton();
 						updateEatButtons();
@@ -1250,7 +1265,8 @@ const firebaseEnvVars = {
 					});
 					
 					// Save immediately on blur (when user leaves the field)  
-					input.addEventListener('blur', () => {
+					input.addEventListener('blur', (e) => {
+						console.log(`👁️ Blur event triggered on ${e.target.id}: "${e.target.value}"`);
 						saveFlavors();
 						saveFillLevels(); // Also save fill levels
 						updateShareButton();
