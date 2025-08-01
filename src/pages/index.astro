@@ -1491,6 +1491,844 @@ const firebaseEnvVars = {
 					}
 				}, 1000);
 			});
+			
+			// ========================================
+			// PHASE 8.4: NATIVE TOUCH GESTURES
+			// ========================================
+			
+			// Touch gesture variables
+			let touchStartY = 0;
+			let touchStartX = 0;
+			let isScrolling = false;
+			let longPressTimer = null;
+			let lastTap = 0;
+			let pullToRefreshTriggered = false;
+			
+			// Pull-to-refresh functionality
+			let pullDistance = 0;
+			let isPulling = false;
+			const PULL_THRESHOLD = 80;
+			const MAX_PULL_DISTANCE = 120;
+			
+			// Create pull-to-refresh indicator
+			function createPullToRefreshIndicator() {
+				const indicator = document.createElement('div');
+				indicator.id = 'pull-refresh-indicator';
+				indicator.className = 'fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center py-3 transform -translate-y-full transition-transform duration-300 z-50';
+				indicator.innerHTML = `
+					<div class="flex items-center justify-center gap-2">
+						<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+						</svg>
+						<span id="refresh-text">Desliza para actualizar</span>
+					</div>
+				`;
+				document.body.appendChild(indicator);
+				return indicator;
+			}
+			
+			const refreshIndicator = createPullToRefreshIndicator();
+			
+			// Haptic feedback simulation
+			function triggerHapticFeedback(type = 'light') {
+				// Use Vibration API if available
+				if ('vibrator' in navigator || 'vibrate' in navigator) {
+					const patterns = {
+						light: [10],
+						medium: [20],
+						heavy: [30],
+						success: [10, 10, 10],
+						error: [50, 30, 50]
+					};
+					navigator.vibrate(patterns[type] || patterns.light);
+				}
+				
+				// Visual feedback as fallback
+				document.body.classList.add('haptic-feedback');
+				setTimeout(() => document.body.classList.remove('haptic-feedback'), 100);
+			}
+			
+			// Pull-to-refresh touch handling
+			document.addEventListener('touchstart', (e) => {
+				touchStartY = e.touches[0].clientY;
+				touchStartX = e.touches[0].clientX;
+				isScrolling = false;
+				pullToRefreshTriggered = false;
+				
+				// Check if we're at the top of the page for pull-to-refresh
+				if (window.scrollY === 0) {
+					isPulling = true;
+				}
+				
+				// Long press detection
+				longPressTimer = setTimeout(() => {
+					if (!isScrolling) {
+						handleLongPress(e);
+					}
+				}, 600);
+			}, { passive: false });
+			
+			document.addEventListener('touchmove', (e) => {
+				if (!touchStartY) return;
+				
+				const touchY = e.touches[0].clientY;
+				const touchX = e.touches[0].clientX;
+				const diffY = touchY - touchStartY;
+				const diffX = touchX - touchStartX;
+				
+				// Determine if we're scrolling
+				if (Math.abs(diffY) > 10 || Math.abs(diffX) > 10) {
+					isScrolling = true;
+					clearTimeout(longPressTimer);
+				}
+				
+				// Pull-to-refresh logic
+				if (isPulling && diffY > 0 && window.scrollY === 0) {
+					e.preventDefault();
+					pullDistance = Math.min(diffY * 0.5, MAX_PULL_DISTANCE);
+					
+					// Update indicator
+					const progress = Math.min(pullDistance / PULL_THRESHOLD, 1);
+					refreshIndicator.style.transform = `translateY(${pullDistance - 60}px)`;
+					
+					if (pullDistance >= PULL_THRESHOLD && !pullToRefreshTriggered) {
+						triggerHapticFeedback('medium');
+						document.getElementById('refresh-text').textContent = '¡Suelta para actualizar!';
+						pullToRefreshTriggered = true;
+					} else if (pullDistance < PULL_THRESHOLD && pullToRefreshTriggered) {
+						document.getElementById('refresh-text').textContent = 'Desliza para actualizar';
+						pullToRefreshTriggered = false;
+					}
+				}
+			}, { passive: false });
+			
+			document.addEventListener('touchend', (e) => {
+				clearTimeout(longPressTimer);
+				
+				if (isPulling) {
+					if (pullToRefreshTriggered && pullDistance >= PULL_THRESHOLD) {
+						// Trigger refresh
+						triggerHapticFeedback('success');
+						refreshIndicator.style.transform = 'translateY(0)';
+						document.getElementById('refresh-text').innerHTML = `
+							<div class="flex items-center justify-center gap-2">
+								<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+								</svg>
+								<span>Actualizando...</span>
+							</div>
+						`;
+						
+						// Perform refresh actions
+						performPullToRefresh();
+					} else {
+						// Snap back
+						refreshIndicator.style.transform = 'translateY(-100%)';
+					}
+					
+					isPulling = false;
+					pullDistance = 0;
+				}
+				
+				// Handle double tap
+				const now = Date.now();
+				if (now - lastTap < 300) {
+					handleDoubleTap(e);
+				}
+				lastTap = now;
+				
+				touchStartY = 0;
+				touchStartX = 0;
+			});
+			
+			// Pull-to-refresh action
+			async function performPullToRefresh() {
+				try {
+					console.log('🔄 Pull-to-refresh triggered');
+					
+					// Reload data from Firebase
+					if (currentSessionId && isFirebaseInitialized) {
+						await loadInitialData();
+						console.log('✅ Data refreshed from Firebase');
+					} else {
+						await loadLocalStorageData();
+						console.log('✅ Data refreshed from localStorage');
+					}
+					
+					// Update UI
+					updateContainerVisuals();
+					showSyncStatus('synced');
+					
+					// Success feedback
+					setTimeout(() => {
+						refreshIndicator.style.transform = 'translateY(-100%)';
+						document.getElementById('refresh-text').textContent = '¡Actualizado! 🎉';
+						setTimeout(() => {
+							document.getElementById('refresh-text').textContent = 'Desliza para actualizar';
+						}, 1000);
+					}, 800);
+					
+				} catch (error) {
+					console.error('❌ Pull-to-refresh failed:', error);
+					triggerHapticFeedback('error');
+					refreshIndicator.style.transform = 'translateY(-100%)';
+					document.getElementById('refresh-text').textContent = 'Error al actualizar';
+					setTimeout(() => {
+						document.getElementById('refresh-text').textContent = 'Desliza para actualizar';
+					}, 2000);
+				}
+			}
+			
+			// Long press handler
+			function handleLongPress(e) {
+				console.log('👆 Long press detected');
+				triggerHapticFeedback('medium');
+				
+				const target = e.target.closest('.flavor-input, .ice-cream-visual');
+				if (target) {
+					if (target.classList.contains('flavor-input')) {
+						// Show context menu for input
+						showInputContextMenu(target, e.touches[0]);
+					} else if (target.classList.contains('ice-cream-visual')) {
+						// Show context menu for ice cream container
+						showContainerContextMenu(target, e.touches[0]);
+					}
+				}
+			}
+			
+			// Double tap handler
+			function handleDoubleTap(e) {
+				console.log('👆👆 Double tap detected');
+				triggerHapticFeedback('light');
+				
+				const target = e.target.closest('.ice-cream-visual');
+				if (target) {
+					// Double tap to eat ice cream
+					const containerId = target.dataset.container;
+					if (containerId) {
+						eatIceCream(containerId);
+					}
+				}
+			}
+			
+			// Context menu for input fields
+			function showInputContextMenu(input, touch) {
+				const menu = document.createElement('div');
+				menu.className = 'fixed bg-white rounded-xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in';
+				menu.style.left = `${Math.min(touch.clientX, window.innerWidth - 200)}px`;
+				menu.style.top = `${Math.max(touch.clientY - 100, 20)}px`;
+				
+				const actions = [
+					{ text: '📋 Pegar', action: () => pasteToInput(input) },
+					{ text: '🗑️ Limpiar', action: () => clearInput(input) },
+					{ text: '🍦 Sabor aleatorio', action: () => setRandomFlavor(input) }
+				];
+				
+				actions.forEach(action => {
+					const button = document.createElement('button');
+					button.className = 'block w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors';
+					button.textContent = action.text;
+					button.onclick = () => {
+						action.action();
+						document.body.removeChild(menu);
+						triggerHapticFeedback('light');
+					};
+					menu.appendChild(button);
+				});
+				
+				document.body.appendChild(menu);
+				
+				// Remove menu after 3 seconds or on touch outside
+				setTimeout(() => {
+					if (document.body.contains(menu)) {
+						document.body.removeChild(menu);
+					}
+				}, 3000);
+				
+				document.addEventListener('touchstart', function removeMenu(e) {
+					if (!menu.contains(e.target)) {
+						if (document.body.contains(menu)) {
+							document.body.removeChild(menu);
+						}
+						document.removeEventListener('touchstart', removeMenu);
+					}
+				});
+			}
+			
+			// Context menu for ice cream containers
+			function showContainerContextMenu(container, touch) {
+				const menu = document.createElement('div');
+				menu.className = 'fixed bg-white rounded-xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in';
+				menu.style.left = `${Math.min(touch.clientX, window.innerWidth - 200)}px`;
+				menu.style.top = `${Math.max(touch.clientY - 150, 20)}px`;
+				
+				const containerId = container.dataset.container;
+				const currentLevel = containerFillLevels[containerId] || 80;
+				
+				const actions = [
+					{ text: '🍦 Llenar (80%)', action: () => setFillLevel(containerId, 80) },
+					{ text: '🥄 Medio (50%)', action: () => setFillLevel(containerId, 50) },
+					{ text: '😋 Poco (20%)', action: () => setFillLevel(containerId, 20) },
+					{ text: '🗑️ Vacío (0%)', action: () => setFillLevel(containerId, 0) }
+				];
+				
+				actions.forEach(action => {
+					const button = document.createElement('button');
+					button.className = 'block w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors';
+					button.textContent = action.text;
+					button.onclick = () => {
+						action.action();
+						document.body.removeChild(menu);
+						triggerHapticFeedback('light');
+					};
+					menu.appendChild(button);
+				});
+				
+				document.body.appendChild(menu);
+				
+				// Remove menu after 3 seconds or on touch outside
+				setTimeout(() => {
+					if (document.body.contains(menu)) {
+						document.body.removeChild(menu);
+					}
+				}, 3000);
+				
+				document.addEventListener('touchstart', function removeMenu(e) {
+					if (!menu.contains(e.target)) {
+						if (document.body.contains(menu)) {
+							document.body.removeChild(menu);
+						}
+						document.removeEventListener('touchstart', removeMenu);
+					}
+				});
+			}
+			
+			// Helper functions for context menu actions
+			async function pasteToInput(input) {
+				try {
+					const text = await navigator.clipboard.readText();
+					input.value = text;
+					input.dispatchEvent(new Event('input', { bubbles: true }));
+				} catch (error) {
+					console.log('❌ Clipboard access denied');
+				}
+			}
+			
+			function clearInput(input) {
+				input.value = '';
+				input.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+			
+			function setRandomFlavor(input) {
+				const flavors = [
+					'Vainilla', 'Chocolate', 'Fresa', 'Menta', 'Cookies & Cream',
+					'Dulce de Leche', 'Pistacho', 'Limón', 'Mango', 'Coco',
+					'Café', 'Caramelo', 'Frambuesa', 'Banana', 'Stracciatella'
+				];
+				const randomFlavor = flavors[Math.floor(Math.random() * flavors.length)];
+				input.value = randomFlavor;
+				input.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+			
+			function setFillLevel(containerId, level) {
+				containerFillLevels[containerId] = level;
+				updateContainerVisuals();
+				saveFillLevels();
+			}
+			
+			console.log('👆 Native touch gestures initialized');
+			
+			// ========================================
+			// PHASE 8.5: PERFORMANCE OPTIMIZATION
+			// ========================================
+			
+			// App shell loading optimization
+			function initializeAppShell() {
+				console.log('🚀 Initializing app shell architecture');
+				
+				// Preload critical resources
+				const criticalResources = [
+					'/manifest.json',
+					'/icons/app-icon.svg',
+					'/sw.js'
+				];
+				
+				criticalResources.forEach(resource => {
+					const link = document.createElement('link');
+					link.rel = 'prefetch';
+					link.href = resource;
+					document.head.appendChild(link);
+				});
+			}
+			
+			// Loading state management
+			let isAppLoading = true;
+			
+			function showLoadingState() {
+				const loadingOverlay = document.createElement('div');
+				loadingOverlay.id = 'app-loading';
+				loadingOverlay.className = 'fixed inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-pink-50 flex items-center justify-center z-50';
+				loadingOverlay.innerHTML = `
+					<div class="text-center">
+						<div class="relative mb-8">
+							<!-- Animated ice cream loading icon -->
+							<div class="w-20 h-20 mx-auto relative animate-pulse-gentle">
+								<div class="absolute inset-0 bg-gradient-to-b from-pink-200 to-pink-300 rounded-full"></div>
+								<div class="absolute top-2 left-2 right-2 bottom-6 bg-gradient-to-b from-yellow-100 to-yellow-200 rounded-full"></div>
+								<div class="absolute top-4 left-4 right-4 bottom-12 bg-gradient-to-b from-green-100 to-green-200 rounded-full"></div>
+								<div class="absolute top-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-500 rounded-full"></div>
+							</div>
+						</div>
+						<h2 class="text-2xl font-bold text-gray-800 mb-2">🍦 Dónde Está Mi Helado?</h2>
+						<p class="text-gray-600 animate-pulse">Preparando tu experiencia helada...</p>
+					</div>
+				`;
+				document.body.appendChild(loadingOverlay);
+			}
+			
+			function hideLoadingState() {
+				const loadingOverlay = document.getElementById('app-loading');
+				if (loadingOverlay) {
+					loadingOverlay.style.opacity = '0';
+					loadingOverlay.style.transform = 'scale(0.95)';
+					loadingOverlay.style.transition = 'all 0.3s ease-out';
+					setTimeout(() => {
+						if (document.body.contains(loadingOverlay)) {
+							document.body.removeChild(loadingOverlay);
+						}
+					}, 300);
+				}
+				isAppLoading = false;
+			}
+			
+			// Performance monitoring
+			function measurePerformance() {
+				if ('performance' in window) {
+					const navigation = performance.getEntriesByType('navigation')[0];
+					const paintEntries = performance.getEntriesByType('paint');
+					
+					console.log('⚡ Performance Metrics:');
+					console.log(`- DOM Content Loaded: ${navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart}ms`);
+					console.log(`- Total Load Time: ${navigation.loadEventEnd - navigation.loadEventStart}ms`);
+					
+					paintEntries.forEach(entry => {
+						console.log(`- ${entry.name}: ${entry.startTime}ms`);
+					});
+					
+					// Measure Time to Interactive
+					setTimeout(() => {
+						console.log(`- Time to Interactive: ${Date.now() - navigation.loadEventEnd}ms`);
+					}, 100);
+				}
+			}
+			
+			// Image lazy loading optimization
+			function optimizeImageLoading() {
+				const images = document.querySelectorAll('img[data-src]');
+				
+				if ('IntersectionObserver' in window) {
+					const imageObserver = new IntersectionObserver((entries) => {
+						entries.forEach(entry => {
+							if (entry.isIntersecting) {
+								const img = entry.target;
+								img.src = img.dataset.src;
+								img.classList.remove('lazy');
+								imageObserver.unobserve(img);
+							}
+						});
+					});
+					
+					images.forEach(img => imageObserver.observe(img));
+				} else {
+					// Fallback for older browsers
+					images.forEach(img => {
+						img.src = img.dataset.src;
+						img.classList.remove('lazy');
+					});
+				}
+			}
+			
+			// Memory optimization
+			function optimizeMemoryUsage() {
+				// Clean up unused event listeners on scroll
+				let scrollTimeout;
+				window.addEventListener('scroll', () => {
+					clearTimeout(scrollTimeout);
+					scrollTimeout = setTimeout(() => {
+						// Trigger garbage collection if available
+						if (window.gc && typeof window.gc === 'function') {
+							window.gc();
+						}
+					}, 1000);
+				}, { passive: true });
+				
+				// Clean up DOM nodes periodically
+				setInterval(() => {
+					// Remove any orphaned context menus
+					const orphanedMenus = document.querySelectorAll('[class*="context-menu"]:not([style*="display: block"])');
+					orphanedMenus.forEach(menu => {
+						if (document.body.contains(menu)) {
+							document.body.removeChild(menu);
+						}
+					});
+				}, 30000); // Every 30 seconds
+			}
+			
+			// Network optimization
+			function optimizeNetworkRequests() {
+				// Firebase connection pooling
+				if (isFirebaseInitialized) {
+					// Batch multiple Firebase operations
+					let pendingWrites = [];
+					let batchTimeout;
+					
+					const originalSaveFlavors = saveFlavors;
+					saveFlavors = function() {
+						pendingWrites.push('flavors');
+						clearTimeout(batchTimeout);
+						batchTimeout = setTimeout(() => {
+							originalSaveFlavors();
+							pendingWrites = [];
+						}, 100); // Batch writes within 100ms
+					};
+				}
+			}
+			
+			// Resource preloading for faster subsequent loads
+			function preloadCriticalResources() {
+				// Preload Firebase SDK if not already loaded
+				if (!isFirebaseInitialized) {
+					const script = document.createElement('link');
+					script.rel = 'preload';
+					script.as = 'script';
+					script.href = 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
+					document.head.appendChild(script);
+				}
+				
+				// Preload Web Font if needed (although we're using system fonts)
+				const link = document.createElement('link');
+				link.rel = 'preconnect';
+				link.href = 'https://fonts.googleapis.com';
+				document.head.appendChild(link);
+			}
+			
+			// Progressive enhancement loading
+			function loadProgressiveEnhancements() {
+				// Load non-critical features after initial render
+				requestIdleCallback(() => {
+					// Initialize analytics if available
+					if (typeof gtag !== 'undefined') {
+						gtag('config', 'GA_TRACKING_ID');
+					}
+					
+					// Initialize additional PWA features
+					if ('share' in navigator) {
+						console.log('📱 Native sharing available');
+					}
+					
+					if ('contacts' in navigator) {
+						console.log('📞 Contacts API available');
+					}
+				});
+			}
+			
+			// Initialize performance optimizations
+			function initializePerformanceOptimizations() {
+				showLoadingState();
+				initializeAppShell();
+				optimizeImageLoading();
+				optimizeMemoryUsage();
+				optimizeNetworkRequests();
+				preloadCriticalResources();
+				
+				// Hide loading state after app is ready
+				setTimeout(() => {
+					hideLoadingState();
+					measurePerformance();
+					loadProgressiveEnhancements();
+					console.log('⚡ Performance optimizations initialized');
+				}, 500);
+			}
+			
+			initializePerformanceOptimizations();
+			
+			// ========================================
+			// PHASE 8.6: DEVICE INTEGRATION
+			// ========================================
+			
+			// Screen Wake Lock API
+			let wakeLock = null;
+			
+			async function requestWakeLock() {
+				try {
+					if ('wakeLock' in navigator) {
+						wakeLock = await navigator.wakeLock.request('screen');
+						console.log('🔆 Screen wake lock acquired');
+						
+						wakeLock.addEventListener('release', () => {
+							console.log('🔆 Screen wake lock released');
+						});
+					}
+				} catch (error) {
+					console.log('❌ Wake lock failed:', error);
+				}
+			}
+			
+			// Device orientation handling
+			function handleOrientationChange() {
+				const handleOrientation = () => {
+					const orientation = screen.orientation?.type || 'unknown';
+					console.log('📱 Orientation changed to:', orientation);
+					
+					// Trigger haptic feedback on orientation change
+					triggerHapticFeedback('light');
+					
+					// Adjust UI for orientation
+					if (orientation.includes('landscape')) {
+						document.body.classList.add('landscape-mode');
+						// Optionally adjust container layout for landscape
+					} else {
+						document.body.classList.remove('landscape-mode');
+					}
+				};
+				
+				if (screen.orientation) {
+					screen.orientation.addEventListener('change', handleOrientation);
+				} else {
+					// Fallback for older browsers
+					window.addEventListener('orientationchange', handleOrientation);
+				}
+				
+				// Initial orientation check
+				handleOrientation();
+			}
+			
+			// Network status monitoring
+			function monitorNetworkStatus() {
+				function updateNetworkStatus() {
+					const isOnlineNow = navigator.onLine;
+					console.log(`🌐 Network status: ${isOnlineNow ? 'online' : 'offline'}`);
+					
+					if (isOnlineNow !== isOnline) {
+						isOnline = isOnlineNow;
+						
+						if (isOnline) {
+							// Back online - trigger sync
+							triggerHapticFeedback('success');
+							showSyncStatus('synced');
+							if (currentSessionId && isFirebaseInitialized) {
+								saveFlavors();
+								saveFillLevels();
+							}
+						} else {
+							// Gone offline
+							triggerHapticFeedback('error');
+							showSyncStatus('offline');
+						}
+					}
+				}
+				
+				window.addEventListener('online', updateNetworkStatus);
+				window.addEventListener('offline', updateNetworkStatus);
+				updateNetworkStatus(); // Initial check
+			}
+			
+			// Battery status monitoring
+			async function monitorBatteryStatus() {
+				try {
+					if ('getBattery' in navigator) {
+						const battery = await navigator.getBattery();
+						
+						function updateBatteryInfo() {
+							const level = Math.round(battery.level * 100);
+							const charging = battery.charging;
+							console.log(`🔋 Battery: ${level}% ${charging ? '(charging)' : ''}`);
+							
+							// Show battery warning if low and not charging
+							if (level < 20 && !charging) {
+								console.log('⚠️ Low battery detected');
+								// Could show a subtle notification
+							}
+						}
+						
+						battery.addEventListener('chargingchange', updateBatteryInfo);
+						battery.addEventListener('levelchange', updateBatteryInfo);
+						updateBatteryInfo(); // Initial check
+					}
+				} catch (error) {
+					console.log('🔋 Battery API not available');
+				}
+			}
+			
+			// Device memory monitoring
+			function monitorDeviceMemory() {
+				if ('memory' in performance) {
+					const memory = performance.memory;
+					console.log('💾 Memory Usage:', {
+						used: Math.round(memory.usedJSHeapSize / 1024 / 1024) + 'MB',
+						total: Math.round(memory.totalJSHeapSize / 1024 / 1024) + 'MB',
+						limit: Math.round(memory.jsHeapSizeLimit / 1024 / 1024) + 'MB'
+					});
+					
+					// Warning if memory usage is high
+					const usagePercentage = memory.usedJSHeapSize / memory.jsHeapSizeLimit;
+					if (usagePercentage > 0.8) {
+						console.log('⚠️ High memory usage detected');
+						// Trigger cleanup
+						optimizeMemoryUsage();
+					}
+				}
+				
+				if ('deviceMemory' in navigator) {
+					console.log(`💾 Device Memory: ${navigator.deviceMemory}GB`);
+					
+					// Adjust performance based on device memory
+					if (navigator.deviceMemory < 2) {
+						console.log('📱 Low-memory device detected - optimizing');
+						// Reduce animation complexity, disable some features
+						document.body.classList.add('low-memory-mode');
+					}
+				}
+			}
+			
+			// Keyboard handling for mobile
+			function handleMobileKeyboard() {
+				const viewport = document.querySelector('meta[name=viewport]');
+				
+				function handleKeyboardShow() {
+					console.log('⌨️ Virtual keyboard shown');
+					document.body.classList.add('keyboard-open');
+					
+					// Adjust viewport for keyboard
+					viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no');
+				}
+				
+				function handleKeyboardHide() {
+					console.log('⌨️ Virtual keyboard hidden');
+					document.body.classList.remove('keyboard-open');
+					
+					// Restore viewport
+					viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+				}
+				
+				// iOS Safari keyboard detection
+				if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+					let initialViewportHeight = window.visualViewport?.height || window.innerHeight;
+					
+					function checkKeyboard() {
+						const currentHeight = window.visualViewport?.height || window.innerHeight;
+						const heightDifference = initialViewportHeight - currentHeight;
+						
+						if (heightDifference > 150) { // Keyboard likely open
+							handleKeyboardShow();
+						} else {
+							handleKeyboardHide();
+						}
+					}
+					
+					if (window.visualViewport) {
+						window.visualViewport.addEventListener('resize', checkKeyboard);
+					} else {
+						window.addEventListener('resize', checkKeyboard);
+					}
+				}
+				
+				// Android keyboard detection
+				window.addEventListener('resize', () => {
+					const heightDifference = window.screen.height - window.innerHeight;
+					if (heightDifference > 150) {
+						handleKeyboardShow();
+					} else {
+						handleKeyboardHide();
+					}
+				});
+			}
+			
+			// Geolocation for future features
+			function initializeGeolocation() {
+				if ('geolocation' in navigator) {
+					console.log('📍 Geolocation available');
+					// Could be used for ice cream shop finder in future
+				}
+			}
+			
+			// Device sensors (if available)
+			function initializeDeviceSensors() {
+				// Ambient Light Sensor (experimental)
+				if ('AmbientLightSensor' in window) {
+					try {
+						const sensor = new AmbientLightSensor();
+						sensor.addEventListener('reading', () => {
+							const lux = sensor.illuminance;
+							console.log(`💡 Ambient light: ${lux} lux`);
+							
+							// Adjust theme based on ambient light
+							if (lux < 10) {
+								document.body.classList.add('dark-environment');
+							} else {
+								document.body.classList.remove('dark-environment');
+							}
+						});
+						sensor.start();
+					} catch (error) {
+						console.log('💡 Ambient light sensor not available');
+					}
+				}
+			}
+			
+			// Share API integration
+			function enhanceSharing() {
+				const shareButton = document.getElementById('share-btn');
+				
+				if ('share' in navigator && shareButton) {
+					shareButton.addEventListener('click', async (e) => {
+						e.preventDefault();
+						
+						const sessionUrl = generateShareableUrl(currentSessionId);
+						
+						try {
+							await navigator.share({
+								title: '🍦 Dónde Está Mi Helado?',
+								text: 'Únete a mi sesión de helados! 🍨',
+								url: sessionUrl
+							});
+							
+							console.log('📱 Native sharing completed');
+							triggerHapticFeedback('success');
+						} catch (error) {
+							console.log('📱 Native sharing cancelled or failed');
+							// Fallback to clipboard
+							copyShareURL();
+						}
+					});
+				}
+			}
+			
+			// Initialize device integration features
+			function initializeDeviceIntegration() {
+				handleOrientationChange();
+				monitorNetworkStatus();
+				monitorBatteryStatus();
+				monitorDeviceMemory();
+				handleMobileKeyboard();
+				initializeGeolocation();
+				initializeDeviceSensors();
+				enhanceSharing();
+				
+				// Request wake lock when app becomes visible
+				document.addEventListener('visibilitychange', () => {
+					if (!document.hidden) {
+						requestWakeLock();
+					} else if (wakeLock) {
+						wakeLock.release();
+						wakeLock = null;
+					}
+				});
+				
+				console.log('📱 Device integration features initialized');
+			}
+			
+			initializeDeviceIntegration();
 			});
 
 			// Save data and clean up listeners before page unload
@@ -1659,6 +2497,186 @@ const firebaseEnvVars = {
 			
 			.haptic-feedback {
 				animation: haptic-light 0.1s ease-out;
+			}
+			
+			/* Phase 8.7: Platform-Specific Optimizations */
+			
+			/* iOS Specific Enhancements */
+			@supports (-webkit-touch-callout: none) {
+				/* iOS Safari specific styles */
+				.ios-safe-top {
+					padding-top: max(20px, var(--safe-area-inset-top));
+				}
+				
+				/* iOS status bar integration */
+				@media (display-mode: standalone) {
+					body {
+						background: linear-gradient(135deg, #EBF4FF 0%, #E0E7FF 50%, #FCE7F3 100%);
+					}
+					
+					/* iOS app-like navigation */
+					.container {
+						max-width: 100%;
+						padding-left: var(--safe-area-inset-left);
+						padding-right: var(--safe-area-inset-right);
+					}
+				}
+				
+				/* iOS keyboard adjustments */
+				.keyboard-open .container {
+					transform: translateY(-10px);
+					transition: transform 0.3s ease;
+				}
+				
+				/* iOS scroll bounce prevention */
+				body {
+					-webkit-overflow-scrolling: touch;
+					overscroll-behavior-y: none;
+				}
+			}
+			
+			/* Android Specific Enhancements */
+			@supports not (-webkit-touch-callout: none) {
+				/* Android Chrome specific styles */
+				@media (display-mode: standalone) {
+					/* Android navigation bar color */
+					meta[name="theme-color"] {
+						content: "#3B82F6";
+					}
+					
+					/* Android Material Design shadows */
+					.bg-white\/80 {
+						box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+					}
+					
+					/* Android ripple effects */
+					button:active::after {
+						content: '';
+						position: absolute;
+						inset: 0;
+						background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+						border-radius: inherit;
+						animation: ripple 0.3s ease-out;
+					}
+				}
+			}
+			
+			/* Landscape mode optimizations */
+			.landscape-mode .container {
+				max-width: 100%;
+				display: flex;
+				flex-direction: row;
+				gap: 2rem;
+				align-items: flex-start;
+			}
+			
+			.landscape-mode header {
+				flex: 0 0 300px;
+			}
+			
+			.landscape-mode main {
+				flex: 1;
+			}
+			
+			/* Low memory device optimizations */
+			.low-memory-mode .animate-pulse-gentle {
+				animation: none;
+			}
+			
+			.low-memory-mode .backdrop-blur-sm {
+				backdrop-filter: none;
+				background: rgba(255, 255, 255, 0.95);
+			}
+			
+			/* Dark environment adjustments */
+			.dark-environment {
+				filter: brightness(0.8);
+			}
+			
+			.dark-environment .bg-white\/80 {
+				background: rgba(255, 255, 255, 0.9);
+			}
+			
+			/* Phase 8.8: Final Polish */
+			
+			/* App store ready optimizations */
+			@media (prefers-reduced-motion: reduce) {
+				*, *::before, *::after {
+					animation-duration: 0.01ms !important;
+					animation-iteration-count: 1 !important;
+					transition-duration: 0.01ms !important;
+				}
+			}
+			
+			/* High contrast mode support */
+			@media (prefers-contrast: high) {
+				.bg-white\/80 {
+					background: rgba(255, 255, 255, 1);
+					border: 2px solid #000;
+				}
+				
+				.text-gray-600 {
+					color: #000;
+				}
+			}
+			
+			/* Print styles for debugging */
+			@media print {
+				body {
+					background: white !important;
+				}
+				
+				.fixed, .absolute {
+					position: static !important;
+				}
+			}
+			
+			/* App screenshot optimization */
+			@media (max-width: 375px) and (max-height: 812px) {
+				/* iPhone X/11/12 screenshot optimization */
+				.container {
+					padding-top: 2rem;
+					padding-bottom: 2rem;
+				}
+			}
+			
+			/* Accessibility enhancements */
+			@media (prefers-reduced-motion: no-preference) {
+				html {
+					scroll-behavior: smooth;
+				}
+			}
+			
+			/* Focus visible for keyboard navigation */
+			button:focus-visible,
+			.flavor-input:focus-visible {
+				outline: 2px solid #3B82F6;
+				outline-offset: 2px;
+			}
+			
+			/* Screen reader only text */
+			.sr-only {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				padding: 0;
+				margin: -1px;
+				overflow: hidden;
+				clip: rect(0, 0, 0, 0);
+				white-space: nowrap;
+				border: 0;
+			}
+			
+			/* Loading state optimizations */
+			#app-loading {
+				will-change: opacity, transform;
+			}
+			
+			/* Context menu improvements */
+			.context-menu {
+				backdrop-filter: blur(20px);
+				-webkit-backdrop-filter: blur(20px);
+				border: 1px solid rgba(255, 255, 255, 0.2);
 			}
 		</style>
 	</body>
