@@ -251,7 +251,7 @@ const firebaseEnvVars = {
 		</footer>
 
 		<!-- Enhanced client-side JavaScript with Firebase real-time sync (Inlined) -->
-		<script type="module">
+		<script type="module" define:vars={{ firebaseEnvVars }}>
 			// Firebase imports (using CDN to avoid build issues)
 			import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
 			import { getDatabase, ref, set, get, onValue, off } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js';
@@ -261,15 +261,15 @@ const firebaseEnvVars = {
 			// ========================================
 			
 			// Firebase configuration from server-side environment variables
-			// These are passed from Astro frontmatter to avoid client-side import.meta.env issues
+			// Using Astro's define:vars to safely pass server variables to client
 			const firebaseConfig = {
-				apiKey: {JSON.stringify(firebaseEnvVars.apiKey)},
-				authDomain: {JSON.stringify(firebaseEnvVars.authDomain)},
-				databaseURL: {JSON.stringify(firebaseEnvVars.databaseURL)},
-				projectId: {JSON.stringify(firebaseEnvVars.projectId)},
-				storageBucket: {JSON.stringify(firebaseEnvVars.storageBucket)},
-				messagingSenderId: {JSON.stringify(firebaseEnvVars.messagingSenderId)},
-				appId: {JSON.stringify(firebaseEnvVars.appId)}
+				apiKey: firebaseEnvVars.apiKey,
+				authDomain: firebaseEnvVars.authDomain,
+				databaseURL: firebaseEnvVars.databaseURL,
+				projectId: firebaseEnvVars.projectId,
+				storageBucket: firebaseEnvVars.storageBucket,
+				messagingSenderId: firebaseEnvVars.messagingSenderId,
+				appId: firebaseEnvVars.appId
 			};
 
 			// Validate that all required environment variables are present
