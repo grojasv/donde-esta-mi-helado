@@ -453,14 +453,20 @@ const firebaseEnvVars = {
 					throw new Error('Firebase not initialized');
 				}
 				
+				console.log(`🔥 saveFillLevelsToFirebase called for session: ${sessionId}`);
+				console.log('📊 Data being sent to Firebase:', fillLevels);
+				
 				try {
 					const fillLevelsRef = getSessionRef(sessionId, 'fillLevels');
+					console.log(`📍 Firebase reference path: sessions/${sessionId}/fillLevels`);
 					await set(fillLevelsRef, fillLevels);
 					console.log(`✅ Fill levels saved to Firebase session: ${sessionId}`);
+					console.log('💾 Also saving to localStorage as backup');
 					localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(fillLevels));
 					return true;
 				} catch (error) {
 					console.error('❌ Error saving fill levels to Firebase:', error);
+					console.error('📍 Error details:', error.message);
 					localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(fillLevels));
 					throw error;
 				}
@@ -777,7 +783,11 @@ const firebaseEnvVars = {
 					// On fill levels change callback
 					(fillLevels) => {
 						console.log('🔄 Firebase fill levels update received');
+						console.log('📊 Received fillLevels from Firebase:', fillLevels);
+						console.log('📊 Previous containerFillLevels:', containerFillLevels);
 						containerFillLevels = fillLevels || {};
+						console.log('📊 Updated containerFillLevels:', containerFillLevels);
+						console.log('🎨 Calling updateContainerVisuals() to refresh UI');
 						updateContainerVisuals();
 						showSyncStatus('synced');
 					}
@@ -786,21 +796,29 @@ const firebaseEnvVars = {
 			
 			// Enhanced function to save fill levels to Firebase and localStorage
 			async function saveFillLevels() {
+				console.log('🚀 saveFillLevels() called');
+				console.log('📊 Saving containerFillLevels:', containerFillLevels);
+				console.log(`🌐 isOnline: ${isOnline}, currentSessionId: ${currentSessionId}`);
+				
 				try {
 					// Save to Firebase if online and session exists
 					if (isOnline && currentSessionId) {
 						try {
+							console.log('☁️ Attempting to save fill levels to Firebase...');
 							await saveFillLevelsToFirebase(currentSessionId, containerFillLevels);
+							console.log('✅ Fill levels saved to Firebase successfully');
 							showSyncStatus('synced');
 						} catch (error) {
 							console.error('❌ Error saving fill levels to Firebase:', error);
 							showSyncStatus('error');
 							// Fallback to localStorage
 							localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(containerFillLevels));
+							console.log('💾 Saved fill levels to localStorage as fallback');
 						}
 					} else {
 						// Save to localStorage only
 						localStorage.setItem(FILL_LEVELS_KEY, JSON.stringify(containerFillLevels));
+						console.log('💾 Saved fill levels to localStorage only (offline mode)');
 						showSyncStatus('offline');
 					}
 				} catch (error) {
@@ -1241,6 +1259,8 @@ const firebaseEnvVars = {
 					// Phase 5: Clear the flavor and show "Yum!" feedback
 					input.value = '';
 					containerFillLevels[containerId] = FILL_LEVELS.EMPTY; // Reset fill level
+					console.log(`🍽️ Set container ${containerId} fill level to EMPTY (${FILL_LEVELS.EMPTY})`);
+					console.log('📊 Current containerFillLevels:', containerFillLevels);
 					if (iceCreamFill) {
 						iceCreamFill.onclick = null; // Remove click handler
 						// Reset color for next flavor
