@@ -301,16 +301,41 @@ const firebaseEnvVars = {
 			// ========================================
 			
 			function generateSessionId() {
-				const timestamp = Date.now().toString();
-				const randomSuffix = Math.random().toString(36).substring(2, 8);
-				return `ice${timestamp}${randomSuffix}`;
+				// Ice cream themed adjectives
+				const adjectives = [
+					'creamy', 'frosty', 'sweet', 'chunky', 'smooth', 'swirled', 
+					'dreamy', 'melty', 'chilly', 'fluffy', 'rich', 'silky',
+					'frozen', 'cool', 'crispy', 'soft', 'thick', 'light',
+					'minty', 'nutty', 'fruity', 'cocoa', 'vanilla', 'strawberry'
+				];
+				
+				// Ice cream themed nouns
+				const nouns = [
+					'sundae', 'scoop', 'cone', 'waffle', 'cherry', 'sprinkles',
+					'banana', 'chocolate', 'caramel', 'fudge', 'cookie', 'brownie',
+					'parfait', 'float', 'shake', 'swirl', 'sandwich', 'bar',
+					'gelato', 'sorbet', 'popsicle', 'cream', 'split', 'topping'
+				];
+				
+				// Pick random adjective and noun
+				const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+				const noun = nouns[Math.floor(Math.random() * nouns.length)];
+				
+				// Add a small number for uniqueness
+				const uniqueNumber = Math.floor(Math.random() * 999) + 1;
+				
+				const sessionId = `${adjective}-${noun}-${uniqueNumber}`;
+				console.log(`🍦 Generated fun session ID: ${sessionId}`);
+				return sessionId;
 			}
 
 			function isValidSessionId(sessionId) {
 				if (!sessionId || typeof sessionId !== 'string') {
 					return false;
 				}
-				const sessionRegex = /^ice[a-zA-Z0-9]{16,}$/;
+				
+				// Ice cream themed format: adjective-noun-number (e.g., 'creamy-sundae-42')
+				const sessionRegex = /^[a-z]+-[a-z]+-[0-9]{1,3}$/;
 				return sessionRegex.test(sessionId);
 			}
 
