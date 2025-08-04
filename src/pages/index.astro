@@ -2107,13 +2107,14 @@ const firebaseEnvVars = {
 					// Trigger haptic feedback on orientation change
 					triggerHapticFeedback('light');
 					
-					// Adjust UI for orientation
-					if (orientation.includes('landscape')) {
-						document.body.classList.add('landscape-mode');
-						// Optionally adjust container layout for landscape
-					} else {
-						document.body.classList.remove('landscape-mode');
-					}
+					// Keep single column layout always - landscape mode disabled
+					// if (orientation.includes('landscape')) {
+					//     document.body.classList.add('landscape-mode');
+					// } else {
+					//     document.body.classList.remove('landscape-mode');
+					// }
+					// Always remove landscape-mode to maintain single column
+					document.body.classList.remove('landscape-mode');
 				};
 				
 				if (screen.orientation) {
@@ -2585,21 +2586,21 @@ const firebaseEnvVars = {
 				}
 			}
 			
-			/* Landscape mode optimizations */
+			/* Landscape mode optimizations - DISABLED to maintain single column */
 			.landscape-mode .container {
-				max-width: 100%;
-				display: flex;
-				flex-direction: row;
-				gap: 2rem;
-				align-items: flex-start;
+				/* Keeping single column layout always */
+				display: block;
+				max-width: 28rem; /* max-w-md */
 			}
 			
 			.landscape-mode header {
-				flex: 0 0 300px;
+				/* Reset any flex properties */
+				flex: none;
 			}
 			
 			.landscape-mode main {
-				flex: 1;
+				/* Reset any flex properties */
+				flex: none;
 			}
 			
 			/* Low memory device optimizations */
