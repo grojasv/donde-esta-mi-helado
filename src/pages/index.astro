@@ -638,9 +638,89 @@ const firebaseEnvVars = {
 				'from-rose-100 to-pink-200'        // Cotton candy
 			];
 
-			// Function to get random ice cream color
-			function getRandomIceCreamColor() {
-				return ICE_CREAM_COLORS[Math.floor(Math.random() * ICE_CREAM_COLORS.length)];
+			// Function to get ice cream color based on flavor text (deterministic)
+			function getFlavorBasedColor(flavorText) {
+				if (!flavorText || typeof flavorText !== 'string') {
+					return ICE_CREAM_COLORS[0]; // Default to vanilla
+				}
+				
+				// Normalize text: lowercase and trim
+				const flavor = flavorText.toLowerCase().trim();
+				
+				// Specific color mappings for common flavors
+				const flavorColorMap = {
+					// Chocolate family
+					'chocolate': 'from-amber-200 to-orange-200',    // Rich chocolate
+					'choco': 'from-amber-200 to-orange-200',
+					'cocoa': 'from-amber-200 to-orange-200',
+					'brownie': 'from-gray-100 to-slate-200',
+					'nutella': 'from-amber-200 to-orange-200',
+					
+					// Vanilla family  
+					'vanilla': 'from-amber-100 to-yellow-100',
+					'vainilla': 'from-amber-100 to-yellow-100',
+					
+					// Strawberry family
+					'strawberry': 'from-pink-100 to-rose-200',
+					'fresa': 'from-pink-100 to-rose-200',
+					'cherry': 'from-pink-200 to-red-200',
+					'cereza': 'from-pink-200 to-red-200',
+					
+					// Mint family
+					'mint': 'from-green-100 to-emerald-200',
+					'menta': 'from-green-100 to-emerald-200',
+					'pistachio': 'from-green-200 to-lime-200',
+					'pistacho': 'from-green-200 to-lime-200',
+					
+					// Fruit family
+					'mango': 'from-orange-200 to-yellow-200',
+					'banana': 'from-yellow-100 to-amber-100',
+					'plátano': 'from-yellow-100 to-amber-100',
+					'peach': 'from-orange-100 to-amber-200',
+					'durazno': 'from-orange-100 to-amber-200',
+					'blueberry': 'from-indigo-100 to-blue-200',
+					'arándano': 'from-indigo-100 to-blue-200',
+					'lime': 'from-lime-100 to-green-200',
+					'limón': 'from-lime-100 to-green-200',
+					
+					// Special flavors
+					'cookies': 'from-gray-100 to-slate-200',
+					'oreo': 'from-gray-100 to-slate-200',
+					'caramel': 'from-amber-200 to-orange-200',
+					'caramelo': 'from-amber-200 to-orange-200',
+					'dulce de leche': 'from-amber-200 to-orange-200',
+					'bubblegum': 'from-blue-100 to-cyan-200',
+					'chicle': 'from-blue-100 to-cyan-200',
+					'lavender': 'from-purple-100 to-violet-200',
+					'lavanda': 'from-purple-100 to-violet-200',
+					'cotton candy': 'from-rose-100 to-pink-200',
+					'algodón': 'from-rose-100 to-pink-200'
+				};
+				
+				// Check for direct matches first
+				if (flavorColorMap[flavor]) {
+					return flavorColorMap[flavor];
+				}
+				
+				// Check for partial matches (if flavor contains a key word)
+				for (const [key, color] of Object.entries(flavorColorMap)) {
+					if (flavor.includes(key) || key.includes(flavor)) {
+						return color;
+					}
+				}
+				
+				// For unknown flavors, use deterministic hash-based selection
+				// This ensures the same text always gets the same color
+				let hash = 0;
+				for (let i = 0; i < flavor.length; i++) {
+					const char = flavor.charCodeAt(i);
+					hash = ((hash << 5) - hash) + char;
+					hash = hash & hash; // Convert to 32-bit integer
+				}
+				
+				// Use absolute value and modulo to get consistent index
+				const colorIndex = Math.abs(hash) % ICE_CREAM_COLORS.length;
+				return ICE_CREAM_COLORS[colorIndex];
 			}
 
 			// Fill level states
@@ -1087,12 +1167,15 @@ const firebaseEnvVars = {
 					if (input.value.trim()) {
 						// Show ice cream fill when there's a flavor
 						if (iceCreamFill) {
-							// Apply random creamy color if not already set
-							if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false') {
-								const randomColor = getRandomIceCreamColor();
-								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl cursor-pointer z-20`;
+							// Apply flavor-based color (recalculate if flavor changed)
+							const currentFlavor = input.value.trim().toLowerCase();
+							const lastFlavor = iceCreamFill.dataset.lastFlavor || '';
+							if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false' || currentFlavor !== lastFlavor) {
+								const flavorColor = getFlavorBasedColor(input.value);
+								iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${flavorColor} transition-all duration-500 rounded-b-xl cursor-pointer z-20`;
 								iceCreamFill.dataset.colorSet = 'true';
-								console.log(`🎨 Applied color to ${containerId}:`, randomColor);
+								iceCreamFill.dataset.lastFlavor = currentFlavor;
+								console.log(`🎨 Applied flavor-based color to ${containerId} (${input.value.trim()}):`, flavorColor);
 							}
 							
 							// Get current fill level (default to FULL for new flavors)
@@ -1126,8 +1209,9 @@ const firebaseEnvVars = {
 						if (iceCreamFill) {
 							iceCreamFill.style.height = '0%';
 							iceCreamFill.style.opacity = '0';
-							// Reset color and fill level for next flavor
+							// Reset color, flavor tracking, and fill level for next flavor
 							iceCreamFill.dataset.colorSet = 'false';
+							iceCreamFill.dataset.lastFlavor = '';
 							containerFillLevels[containerId] = FILL_LEVELS.EMPTY;
 						}
 						
@@ -1223,10 +1307,10 @@ const firebaseEnvVars = {
 					const emptyIndicator = container.querySelector('.empty-indicator');
 					
 					if (iceCreamFill) {
-						// Ensure ice cream has a random color before draining animation
+						// Ensure ice cream has a flavor-based color before draining animation
 						if (!iceCreamFill.dataset.colorSet || iceCreamFill.dataset.colorSet === 'false') {
-							const randomColor = getRandomIceCreamColor();
-							iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${randomColor} transition-all duration-500 rounded-b-xl cursor-pointer`;
+							const flavorColor = getFlavorBasedColor(input.value);
+							iceCreamFill.className = `ice-cream-fill absolute bottom-0 left-0 right-0 bg-gradient-to-t ${flavorColor} transition-all duration-500 rounded-b-xl cursor-pointer`;
 							iceCreamFill.dataset.colorSet = 'true';
 						}
 						// Animate ice cream "draining" as it's being eaten (works from any fill level)
@@ -1267,8 +1351,9 @@ const firebaseEnvVars = {
 					console.log('📊 Current containerFillLevels:', containerFillLevels);
 					if (iceCreamFill) {
 						iceCreamFill.onclick = null; // Remove click handler
-						// Reset color for next flavor
+						// Reset color and flavor tracking for next flavor
 						iceCreamFill.dataset.colorSet = 'false';
+						iceCreamFill.dataset.lastFlavor = '';
 					}
 					eatBtn.innerHTML = '😋';
 					
